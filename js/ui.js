@@ -14,13 +14,14 @@ export function initUI(gameState) {
   stateRef = gameState;
 
   // Handle tab switching
-  document.querySelectorAll("#tabs button").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const tab = btn.getAttribute("data-tab");
-      document.querySelectorAll(".tab").forEach(sec => sec.style.display = "none");
-      document.getElementById(tab).style.display = "block";
-    });
+document.querySelectorAll("#tabs button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const tab = btn.getAttribute("data-tab");
+    document.querySelectorAll(".tab").forEach(sec => sec.classList.remove("active"));
+    document.getElementById(tab).classList.add("active");
   });
+});
+
 
   // Default to dashboard
   document.querySelector("[data-tab='dashboard']").click();

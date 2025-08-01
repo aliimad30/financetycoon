@@ -1,0 +1,81 @@
+/* Reset & Base */
+body {
+  margin: 0;
+  font-family: 'Segoe UI', sans-serif;
+  background: linear-gradient(to bottom right, #1f1f1f, #2a2a2a);
+  color: #fff;
+}
+
+h1, h3 {
+  margin: 0.5em 0;
+  text-align: center;
+}
+
+button {
+  padding: 0.5em 1em;
+  margin: 0.25em;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  cursor: pointer;
+  backdrop-filter: blur(5px);
+  transition: background 0.3s;
+}
+
+button:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+#game {
+  max-width: 600px;
+  margin: auto;
+  padding: 1em;
+}
+
+nav#tabs {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 1em;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 0.5em;
+  backdrop-filter: blur(8px);
+}
+
+nav#tabs button {
+  flex: 1;
+  margin: 0 0.25em;
+}
+
+/* Tabs */
+.tab {
+  display: none;
+  padding: 1em;
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+  margin-bottom: 2em;
+}
+
+/* Visible tab */
+.tab.active {
+  display: block;
+}
+
+/* Stock/Card style */
+.stock, .client, .job, .license, .housing {
+  border-radius: 12px;
+  padding: 1em;
+  margin: 0.5em 0;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(6px);
+}
+
+/* Text helpers */
+em {
+  font-style: italic;
+  color: #ccc;
+}
