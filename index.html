@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Trading Life</title>
+
+  <!-- PWA manifest -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#000000" />
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<main id="game">
+  <h1>📈 Trading Life</h1>
+
+  <nav id="tabs">
+    <button data-tab="dashboard">Dashboard</button>
+    <button data-tab="market">Market</button>
+    <button data-tab="jobs">Jobs</button>
+    <button data-tab="more">More</button>
+  </nav>
+
+  <section id="dashboard" class="tab"></section>
+  <section id="market" class="tab"></section>
+  <section id="jobs" class="tab"></section>
+  <section id="more" class="tab"></section>
+</main>
+
+
+  <!-- Firebase App + Firestore -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAjWILTHlg8jo9adcREsKN3lynVNYk4Oac",
+    authDomain: "financetycoon.firebaseapp.com",
+    projectId: "financetycoon",
+    storageBucket: "financetycoon.firebasestorage.app",
+    messagingSenderId: "585356023733",
+    appId: "1:585356023733:web:68d69731c0593572f8ebfc"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const auth = getAuth();
+  signInAnonymously(auth);
+
+  window.firebase = { app, db, auth };
+</script>
+
+
+  <!-- Modular Game Scripts -->
+  <script type="module" src="js/firestore.js"></script>
+  <script type="module" src="js/player.js"></script>
+  <script type="module" src="js/jobSystem.js"></script>
+  <script type="module" src="js/stockMarket.js"></script>
+  <script type="module" src="js/ui.js"></script>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
