@@ -8,7 +8,7 @@ import { getAvailableLicenses, licenses } from "./licenseSystem.js";
 import { renderStockChart } from "./chartSystem.js";
 
 
-export let selectedStock = window.selectedStock || null;
+export let selectedStock = { value: null };
 
 let stateRef;
 
@@ -69,7 +69,7 @@ stockList.innerHTML = "";
 stocks.forEach(stock => {
   const owned = player.portfolio[stock.symbol] || 0;
 stockList.innerHTML += `
-  <div class="stock ${selectedStock === stock.symbol ? "selected-stock" : ""}" data-symbol="${stock.symbol}">
+  <div class="stock ${selectedStock.value === stock.symbol ? "selected-stock" : ""}" data-symbol="${stock.symbol}">
     <strong>${stock.symbol}</strong> (${stock.name}): $${stock.price}
     <br />
     Owned: ${owned}
@@ -88,7 +88,7 @@ document.querySelectorAll(".stock").forEach(card => {
   card.onclick = (e) => {
     // Avoid triggering on button clicks
     if (e.target.tagName === "BUTTON" || e.target.tagName === "INPUT") return;
-    selectedStock = card.getAttribute("data-symbol");
+    selectedStock.value = card.getAttribute("data-symbol");
     updateChart(gameState);
     updateUI(gameState); // refresh to highlight selected
   };
@@ -307,16 +307,14 @@ moreEl.innerHTML += `
 }
 
 function updateChart(gameState) {
-  if (!selectedStock) {
-    renderStockChart([], "");
-    return;
-  }
-
-  const filteredData = gameState.stockHistory.map(day => ({
-    day: day.day,
-    [selectedStock]: day[selectedStock]
-  }));
-
-  renderStockChart(filteredData, selectedStock);
+if (!selectedStock.value) {
+  renderStockChart([], "");
+  return;
+}
+const filteredData = gameState.stockHistory.map(day => ({
+  day: day.day,
+  [selectedStock.value]: day[selectedStock.value]
+}));
+renderStockChart(filteredData, selectedStock.value);
 }
 
