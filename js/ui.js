@@ -1,7 +1,7 @@
 import { nextDay } from "./main.js";
 import { buyStock, sellStock } from "./trading.js";
 import { saveGame } from "./firestore.js";
-import { getAvailableJobs } from "./jobSystem.js";
+import { getAvailableJobs, getDailyIncome } from "./jobSystem.js";
 import { getAvailableHousing, housingOptions } from "./housingSystem.js";
 import { 
   getClientList, 
@@ -80,7 +80,7 @@ export function updateUI(gameState) {
   if (!player.personal) {
     initPersonalData(player);
   }
-  // Status
+
   // Conditional colors
   const healthColor = player.personal?.health >= 70 ? 'lightgreen' : (player.personal?.health >= 40 ? 'orange' : 'red');
   const moodColor = player.mood >= 70 ? 'lightgreen' : (player.mood >= 40 ? 'orange' : 'red');
@@ -93,20 +93,57 @@ export function updateUI(gameState) {
   const health = player.personal?.health ?? 70;
   const riskChance = insurance ? (insurance.healthRisk * ((100 - health) / 100)).toFixed(1) : 0;
 
+  // ✅ Calculate Portfolio Value
+  let portfolioValue = 0;
+  Object.entries(player.portfolio).forEach(([symbol, holding]) => {
+    const stock = gameState.stocks.find(s => s.symbol === symbol);
+    if (stock) portfolioValue += holding.quantity * stock.price;
+  });
+
+  // ✅ Calculate Daily Income
+  const dailyIncome = getDailyIncome(player);
+
+  // ✅ Calculate Lifestyle Effect Boosts
+const { dietOptions, gymOptions, hobbyOptions, insuranceOptions } = getPersonalChoices();
+const diet = dietOptions.find(d => d.name === player.personal.diet);
+const gym = gymOptions.find(g => g.name === player.personal.gym);
+const hobby = hobbyOptions.find(h => h.name === player.personal.hobby);
+const insuranceChoice = insuranceOptions.find(i => i.name === player.personal.insurance);
+
+const dailyHealthBoost = (diet?.healthEffect || 0) + (gym?.healthEffect || 0);
+const dailyMoodBoost = (diet?.moodEffect || 0) + (gym?.moodEffect || 0) + (hobby?.moodEffect || 0);
+const dailyRepBoost = (diet?.repEffect || 0) + (hobby?.repEffect || 0);
+const insuranceBoost = insuranceChoice?.billReduction ? Math.round(insuranceChoice.billReduction * 100) : 0;
+
+
+  // ✅ Build dashboard HTML
   document.getElementById("status").innerHTML = `
-    <div class="dashboard-card">
-      <h2>📅 Day ${day}</h2>
-      <div class="dash-row"><strong>Job:</strong> ${player.job}</div>
-      <div class="dash-row"><strong>Housing:</strong> ${player.housing}</div>
-      <div class="dash-row"><strong>Clients:</strong> ${player.clients}</div>
-      <div class="dash-row"><strong>Licenses:</strong> ${player.licenses.join(", ") || "None"}</div>
-    </div>
+<div class="dashboard-card">
+  <h2>📅 Day ${day}</h2>
+  <div class="dash-row"><strong>Actions Remaining:</strong> ${player.actionsLeft ?? 0} / 3</div>
+  <div class="dash-row"><strong>Job:</strong> ${player.job}</div>
+  <div class="dash-row"><strong>Housing:</strong> ${player.housing}</div>
+  <div class="dash-row"><strong>Clients:</strong> ${player.clients}</div>
+  <div class="dash-row"><strong>Licenses:</strong> ${player.licenses.join(", ") || "None"}</div>
+</div>
+
 
     <div class="dashboard-card">
       <h3>💰 Finances</h3>
       <div class="dash-row" style="color:${cashColor}"><strong>Cash:</strong> $${player.cash.toFixed(2)}</div>
+      <div class="dash-row"><strong>Portfolio Value:</strong> $${portfolioValue.toFixed(2)}</div>
+      <div class="dash-row"><strong>Daily Income:</strong> $${dailyIncome}</div>
       <div class="dash-row"><strong>Daily Expenses:</strong> $${calculateDailyExpenses(player)}</div>
       <div class="dash-row" style="color:${repColor}"><strong>Reputation:</strong> ${player.reputation}</div>
+    </div>
+
+    <div class="dashboard-card">
+      <h3>📈 Daily Effect Boosts</h3>
+      <div class="dash-row"><strong>Health:</strong> ${dailyHealthBoost >= 0 ? '+' : ''}${dailyHealthBoost}</div>
+      <div class="dash-row"><strong>Mood:</strong> ${dailyMoodBoost >= 0 ? '+' : ''}${dailyMoodBoost}</div>
+<div class="dash-row"><strong>Reputation:</strong> ${dailyRepBoost >= 0 ? '+' : ''}${dailyRepBoost}</div>
+<div class="dash-row"><strong>Insurance:</strong> ${insuranceBoost}% medical bill reduction</div>
+
     </div>
 
     <div class="dashboard-card">
@@ -185,6 +222,7 @@ export function updateUI(gameState) {
     }
   }
 }
+
 
 
 function attachTradeListeners(player, stocks, gameState) {
@@ -498,17 +536,32 @@ function renderChoices(title, list, current, type) {
   let html = `<h4>${title}</h4>`;
   list.forEach(opt => {
     const effects = [];
-    if (opt.healthEffect) effects.push(`Health ${opt.healthEffect>0?'+':''}${opt.healthEffect}`);
-    if (opt.moodEffect) effects.push(`Mood ${opt.moodEffect>0?'+':''}${opt.moodEffect}`);
-    if (opt.repEffect) effects.push(`Reputation ${opt.repEffect>0?'+':''}${opt.repEffect}`);
+
+    // ✅ Effects for all options
+    if (opt.healthEffect) effects.push(`Health ${opt.healthEffect > 0 ? '+' : ''}${opt.healthEffect}`);
+    if (opt.moodEffect) effects.push(`Mood ${opt.moodEffect > 0 ? '+' : ''}${opt.moodEffect}`);
+    if (opt.repEffect) effects.push(`Reputation ${opt.repEffect > 0 ? '+' : ''}${opt.repEffect}`);
+
+    // ✅ Insurance-specific benefit text
+    if (type === "insurance" && opt.billReduction !== undefined) {
+      const percent = Math.round(opt.billReduction * 100);
+      effects.push(`Medical bills reduced by ${percent}%`);
+    }
+
+    // ✅ Only show text if effects exist
+    const effectsText = effects.length > 0 
+      ? ` <span style="color:lightblue;">(${effects.join(', ')})</span>` 
+      : "";
+
     html += `
       <button data-choice="${type}" data-value="${opt.name}" ${opt.name === current ? "style='background:green;'" : ""}>
         ${opt.name} ($${opt.cost}/day)
-      </button> <span style="color:lightblue;">(${effects.join(', ')})</span><br/>
+      </button>${effectsText}<br/>
     `;
   });
   return html;
 }
+
 
 
   personalEl.innerHTML += renderChoices("Diet", dietOptions, player.personal?.diet ?? "Budget Diet", "diet");

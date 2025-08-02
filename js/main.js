@@ -10,7 +10,8 @@ import { updateClientsDaily } from "./clientSystem.js";
 let gameState = {
   day: 1,
   player: null,
-  stocks: []
+  stocks: [],
+  stockHistory: []
 };
 
 async function startGame() {
@@ -38,7 +39,27 @@ async function startGame() {
       stocks: savedGame.stocks || getStocks(),
       stockHistory: savedGame.stockHistory || []
     };
+
+    // ✅ Auto-generate stock history if missing or empty
+    if (!gameState.stockHistory || gameState.stockHistory.length === 0) {
+      gameState.stockHistory = [];
+      for (let day = 1; day <= 30; day++) {
+        const entry = { day };
+        gameState.stocks.forEach(stock => {
+          let lastPrice = gameState.stockHistory.length > 0
+            ? gameState.stockHistory[gameState.stockHistory.length - 1][stock.symbol]
+            : stock.price;
+          let volatility = 0.05 + Math.random() * 0.07;
+          let direction = (Math.random() - 0.5) * 2;
+          let change = lastPrice * volatility * direction;
+          entry[stock.symbol] = Math.max(1, Math.round(lastPrice + change));
+        });
+        gameState.stockHistory.push(entry);
+      }
+    }
+
   } else {
+    // ✅ New game
     gameState.player = defaultPlayer;
     gameState.stocks = getStocks();
     gameState.day = 1;

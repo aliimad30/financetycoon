@@ -9,26 +9,27 @@ export const dietOptions = [
   { name: "Luxury Diet", cost: 40, healthEffect: +2, moodEffect: +2, repEffect: +1 }
 ];
 
-// --- Health insurance options (halved risks) ---
+// --- Health insurance options (bill reduction %) ---
 export const insuranceOptions = [
-  { name: "None", cost: 0, healthRisk: 5, moodEffect: -1 },
-  { name: "Basic Insurance", cost: 10, healthRisk: 2.5, moodEffect: 0 },
-  { name: "Premium Insurance", cost: 25, healthRisk: 0.5, moodEffect: +1 }
+  { name: "None", cost: 0, healthRisk: 5, moodEffect: -1, billReduction: 0 },      // full bill
+  { name: "Basic Insurance", cost: 10, healthRisk: 2.5, moodEffect: 0, billReduction: 0.4 },  // 40% discount
+  { name: "Premium Insurance", cost: 25, healthRisk: 0.5, moodEffect: +1, billReduction: 0.75 } // 75% discount
 ];
 
 // --- Gym memberships ---
 export const gymOptions = [
-  { name: "None", cost: 0, healthEffect: 0, moodEffect: 0 },
+  { name: "None", cost: 0, healthEffect: -1, moodEffect: -1 },
   { name: "Basic Gym", cost: 5, healthEffect: +1, moodEffect: +1 },
   { name: "Premium Gym", cost: 15, healthEffect: +2, moodEffect: +2 }
 ];
 
 // --- Hobbies / Social life ---
 export const hobbyOptions = [
-  { name: "None", cost: 0, moodEffect: 0, repEffect: 0 },
-  { name: "Casual Hobby", cost: 5, moodEffect: +1, repEffect: 0 },
-  { name: "Exclusive Club", cost: 60, moodEffect: +3, repEffect: +2 }
+  { name: "None", cost: 0, moodEffect: -1, repEffect: 0 },
+  { name: "Casual Hobby", cost: 20, moodEffect: +1, repEffect: +1 },
+  { name: "Exclusive Club", cost: 100, moodEffect: +3, repEffect: +3 }
 ];
+
 
 // --- Initialize lifestyle choices ---
 export function initPersonalData(player) {
@@ -75,8 +76,11 @@ export function applyDailyPersonalEffects(player) {
   const adjustedRisk = insurance.healthRisk * ((100 - health) / 100);
 
   if (Math.random() * 100 < adjustedRisk) {
-    const bill = Math.floor(Math.random() * 200) + 100;
-    totalCost += bill;
+  let bill = Math.floor(Math.random() * 200) + 100;
+  const discount = insurance.billReduction || 0;
+  bill = Math.floor(bill * (1 - discount));  // ✅ Apply insurance discount
+  totalCost += bill;
+
     totalMoodChange -= 3;
     totalHealthChange -= 5;
 

@@ -28,6 +28,7 @@ export function sellStock(player, symbol, price, qty = 1) {
 
   const avgCostPerShare = stock.totalCost / stock.quantity;
   const totalSellAmount = qty * price;
+  const profit = (price - avgCostPerShare) * qty;
 
   // Reduce holding
   stock.quantity -= qty;
@@ -38,6 +39,23 @@ export function sellStock(player, symbol, price, qty = 1) {
   if (stock.quantity === 0) {
     delete player.portfolio[symbol];
   }
+
+  // ✅ Reputation effects
+  if (profit > 0) {
+    const repGain = Math.min(5, Math.floor(profit / 100)); // +1 rep per $100 profit
+    if (repGain > 0) {
+      player.reputation = Math.min(100, player.reputation + repGain);
+      alert(`You made $${profit.toFixed(2)} profit. Reputation +${repGain}`);
+    }
+  } else if (profit < 0) {
+    const repLoss = Math.min(5, Math.ceil(Math.abs(profit) / 200)); // -1 rep per $200 loss
+    if (repLoss > 0) {
+      player.reputation = Math.max(0, player.reputation - repLoss);
+      alert(`You lost $${Math.abs(profit).toFixed(2)}. Reputation -${repLoss}`);
+    }
+  }
+
   return true;
 }
+
 
