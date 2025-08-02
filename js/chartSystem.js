@@ -33,7 +33,7 @@ export function renderStockChart(stockHistory) {
   });
 
   if (chart) chart.destroy();
-
+console.log("✅ Final datasets going into chart:", datasets);
   chart = new Chart(ctx, {
     type: "line",
     data: {
