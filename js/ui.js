@@ -58,11 +58,12 @@ export function updateUI(gameState) {
     `;
 
   // Market tab
-  const marketEl = document.getElementById("market");
-  marketEl.innerHTML = `
+ const marketEl = document.getElementById("market");
+marketEl.innerHTML = `
   <h3>📈 Stock Market</h3>
-  <canvas id="stockChart" height="200"></canvas>
+  <canvas id="stockChart" width="600" height="300" style="border:1px solid red;display:block;margin:auto;"></canvas>
 `;
+
 
   renderStockChart(gameState.stockHistory || []);
 
