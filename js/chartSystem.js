@@ -2,13 +2,19 @@ let chart;
 
 export function renderStockChart(stockHistory) {
   const ctx = document.getElementById("stockChart");
-  if (!ctx || stockHistory.length === 0) return;
+  if (!ctx || stockHistory.length === 0) {
+    if (chart) chart.destroy();
+    return;
+  }
+
+  // Take last 30 days only
+  const trimmedHistory = stockHistory.slice(-30);
 
   const context = ctx.getContext("2d");
   if (chart) chart.destroy();
 
-  const labels = stockHistory.map(day => `Day ${day.day}`);
-  const symbols = Object.keys(stockHistory[0]).filter(k => k !== "day");
+  const labels = trimmedHistory.map(day => day.day); // just numbers
+  const symbols = Object.keys(trimmedHistory[0]).filter(k => k !== "day");
 
   const datasets = symbols.map((symbol, idx) => {
     const colors = [
@@ -20,7 +26,7 @@ export function renderStockChart(stockHistory) {
     ];
     return {
       label: symbol,
-      data: stockHistory.map(d => d[symbol]),
+      data: trimmedHistory.map(d => d[symbol]),
       borderColor: colors[idx % colors.length],
       backgroundColor: colors[idx % colors.length].replace("0.8", "0.2"),
       fill: false,
@@ -34,4 +40,3 @@ export function renderStockChart(stockHistory) {
     options: { responsive: true }
   });
 }
-

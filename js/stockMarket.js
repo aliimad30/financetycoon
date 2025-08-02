@@ -12,9 +12,19 @@ export function getStocks() {
 
 export function updateMarket(stocks) {
   for (let stock of stocks) {
-    const volatility = Math.random() * 0.1; // up to ±10%
-    const direction = stock.trend + (Math.random() - 0.5); // slightly biased
+    // Random volatility ±5% to ±12%
+    const volatility = 0.05 + Math.random() * 0.07;
+
+    // Random direction but slightly influenced by trend
+    const randomFactor = (Math.random() - 0.5) * 2; // -1 to +1
+    const direction = (stock.trend * 0.3) + randomFactor;
+
     const change = stock.price * volatility * direction;
     stock.price = Math.max(1, Math.round(stock.price + change));
+
+    // Occasionally flip trend direction to simulate market sentiment shifts
+    if (Math.random() < 0.1) {
+      stock.trend = -stock.trend;
+    }
   }
 }

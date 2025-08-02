@@ -8,7 +8,7 @@ import { getAvailableLicenses, licenses } from "./licenseSystem.js";
 import { renderStockChart } from "./chartSystem.js";
 
 
-
+let selectedStock = null;
 let stateRef;
 
 
@@ -58,7 +58,8 @@ export function updateUI(gameState) {
     `;
 
   // Market tab
-renderStockChart(gameState.stockHistory || []);
+updateChart(gameState);
+
 
 // Render stock list in a separate container
 const stockList = document.getElementById("stockList");
@@ -66,7 +67,7 @@ stockList.innerHTML = "";
 stocks.forEach(stock => {
   const owned = player.portfolio[stock.symbol] || 0;
   stockList.innerHTML += `
-    <div class="stock">
+    <div class="stock" data-symbol="${stock.symbol}">
       <strong>${stock.symbol}</strong> (${stock.name}): $${stock.price}
       <br />
       Owned: ${owned}
@@ -75,6 +76,15 @@ stocks.forEach(stock => {
     </div>
   `;
 });
+
+// Click on stock card to show only that stock's chart
+document.querySelectorAll(".stock").forEach(card => {
+  card.onclick = () => {
+    selectedStock = card.getAttribute("data-symbol");
+    updateChart(gameState);
+  };
+});
+
 
   // Event listeners
   document.querySelectorAll("[data-buy]").forEach(btn => {
@@ -249,4 +259,19 @@ moreEl.innerHTML += `
   </ul>
 `;
 
+}
+
+function updateChart(gameState) {
+  // Filter history for selected stock or show nothing if null
+  if (!selectedStock) {
+    renderStockChart([]);
+    return;
+  }
+
+  const filteredData = gameState.stockHistory.map(day => ({
+    day: day.day,
+    [selectedStock]: day[selectedStock]
+  }));
+
+  renderStockChart(filteredData);
 }
