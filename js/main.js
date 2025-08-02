@@ -27,21 +27,25 @@ async function startGame() {
 export async function nextDay() {
   gameState.day += 1;
 
-  // Simulate job income
+  // Job income
   gameState.player.cash += getDailyIncome(gameState.player);
 
-  // Simulate market
+  // Market simulation
   updateMarket(gameState.stocks);
-  if (!state.stockHistory) state.stockHistory = [];
-state.stockHistory.push({ day: state.day, price: state.stocks[0].price });
-if (state.stockHistory.length > 30) state.stockHistory.shift(); // keep 30 days max
 
+  // Stock history tracking (for chart)
+  if (!gameState.stockHistory) gameState.stockHistory = [];
 
-  // Save progress
+  const aapl = gameState.stocks.find(s => s.symbol === "AAPL");
+  if (aapl) {
+    gameState.stockHistory.push({ AAPL: aapl.price });
+    if (gameState.stockHistory.length > 30) gameState.stockHistory.shift();
+  }
+
+  // Save and update
   await saveGame(gameState);
-
-  // Update display
   updateUI(gameState);
 }
+
 
 startGame();
