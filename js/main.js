@@ -3,6 +3,8 @@ import { initUI, updateUI, selectedStock as uiSelectedStock } from "./ui.js";
 import { getStocks, updateMarket } from "./stockMarket.js";
 import { getDailyIncome } from "./jobSystem.js";
 import { saveGame } from "./firestore.js";
+import { applyDailyPersonalEffects } from "./personalSystem.js";
+
 
 let gameState = {
   day: 1,
@@ -45,25 +47,20 @@ import { updateClientsDaily } from "./clientSystem.js";
 export async function nextDay() {
   gameState.day += 1;
   gameState.player.actionsLeft = 3;
-  gameState.player.cash += getDailyIncome(gameState.player);
-  updateMarket(gameState.stocks);
 
-// Personal expenses and effects
+  // Add daily income
+  gameState.player.cash += getDailyIncome(gameState.player);
+
+  // ✅ Apply lifestyle costs and effects (diet, gym, insurance, hobbies)
   applyDailyPersonalEffects(gameState.player);
 
-  // Deduct daily expenses if unemployed
-    let baseExpense = 5; // food, minimal cost
-    if (gameState.player.job === "Unemployed") {
-  if (gameState.player.housing === "Apartment") baseExpense = 25; // rent
-  else if (gameState.player.housing === "House") baseExpense = 50; // mortgage
-  else baseExpense = 10; // car living cost
-
-  gameState.player.cash = Math.max(0, gameState.player.cash - baseExpense);
-    }
-
-  // ✅ Update clients daily (trust decay, patience check)
+  // ✅ Update clients
   updateClientsDaily(gameState.player);
 
+  // ✅ Update stock market
+  updateMarket(gameState.stocks);
+
+  // ✅ Update stock history
   if (!gameState.stockHistory) gameState.stockHistory = [];
   const historyEntry = { day: gameState.day };
   gameState.stocks.forEach(stock => {
@@ -75,6 +72,7 @@ export async function nextDay() {
   await saveGame(gameState);
   updateUI(gameState);
 }
+
 
 
 startGame();

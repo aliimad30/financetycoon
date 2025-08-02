@@ -27,7 +27,7 @@ export const gymOptions = [
 export const hobbyOptions = [
   { name: "None", cost: 0, moodEffect: 0, repEffect: 0 },
   { name: "Casual Hobby", cost: 5, moodEffect: +1, repEffect: 0 },
-  { name: "Exclusive Club", cost: 20, moodEffect: +3, repEffect: +1 }
+  { name: "Exclusive Club", cost: 60, moodEffect: +3, repEffect: +2 }
 ];
 
 // --- Initialize lifestyle choices ---

@@ -14,6 +14,8 @@ import {
 import { getAvailableLicenses, licenses } from "./licenseSystem.js";
 import { renderStockChart } from "./chartSystem.js";
 import { getPersonalChoices, initPersonalData } from "./personalSystem.js";
+import { applyDailyPersonalEffects } from "./personalSystem.js";
+
 
 
 function calculateDailyExpenses(player) {
@@ -27,13 +29,7 @@ function calculateDailyExpenses(player) {
     expenses += (gymOptions.find(g => g.name === gym)?.cost || 0);
     expenses += (hobbyOptions.find(h => h.name === hobby)?.cost || 0);
   }
-  // Housing cost if unemployed
-  if (player.job === "Unemployed") {
-    if (player.housing === "Apartment") expenses += 25;
-    if (player.housing === "House") expenses += 50;
-    if (player.housing === "Car") expenses += 10;
-  }
-  return expenses;
+  return expenses;  // ✅ No extra penalty for unemployment
 }
 
 
@@ -246,36 +242,78 @@ function renderJobs(player) {
 
 function renderMore(player, gameState) {
   const moreEl = document.getElementById("more");
-  moreEl.innerHTML = `<h3>🏠 Housing Upgrades</h3>`;
+  moreEl.innerHTML = `<h3>🏠 Housing Options</h3>`;
+  
+  // === Housing Section ===
   const housingChoices = getAvailableHousing(player);
   if (housingChoices.length === 0) {
-    moreEl.innerHTML += `<p>No housing upgrades available yet.</p>`;
+    moreEl.innerHTML += `<p>No housing options available.</p>`;
   } else {
     housingChoices.forEach(option => {
       moreEl.innerHTML += `
         <div class="housing">
           <strong>${option.name}</strong> – $${option.cost}<br/>
           <em>${option.description}</em><br/>
+          <span style="color:${player.reputation >= option.minReputation ? 'lightgreen' : 'red'}">
+            Required Reputation: ${option.minReputation}
+          </span><br/>
           <button data-housing="${option.name}">Move In</button>
         </div>
       `;
     });
+
     document.querySelectorAll("[data-housing]").forEach(btn => {
       btn.onclick = async () => {
         if (!useAction(player)) return;
-        const home = housingOptions.find(h => h.name === btn.getAttribute("data-housing"));
-        if (player.cash >= home.cost) {
-          player.cash -= home.cost;
-          player.housing = home.name;
-          player.reputation = Math.min(100, player.reputation + (home.name === "Apartment" ? 5 : 15));
-          await saveGame(gameState);
-          updateUI(gameState);
-          alert(`You moved into a ${home.name}!`);
+        const homeName = btn.getAttribute("data-housing");
+        const home = housingOptions.find(h => h.name === homeName);
+        const current = housingOptions.find(h => h.name === player.housing);
+
+        // Determine rep change
+        let repChange = 0;
+
+        // --- Upgrade ---
+        if (home.cost > current.cost) {
+          if (player.reputation < home.minReputation) {
+            alert(`You need at least ${home.minReputation} reputation to move in here.`);
+            return;
+          }
+          if (player.cash < home.cost) {
+            alert("Not enough cash to upgrade.");
+            return;
+          }
+          if (home.name === "Apartment") repChange = 5;
+          if (home.name === "House") repChange = 10;
+          if (home.name === "Mansion") repChange = 15;
         }
+
+        // --- Downgrade ---
+        else if (home.cost < current.cost) {
+          if (player.cash < home.cost) {
+            alert("Not enough cash to downgrade.");
+            return;
+          }
+          if (home.name === "Car" && current.name === "Apartment") repChange = -20;
+          if (home.name === "Car" && current.name === "House") repChange = -30;
+          if (home.name === "Car" && current.name === "Mansion") repChange = -50;
+          if (home.name === "Apartment" && current.name === "House") repChange = -20;
+          if (home.name === "Apartment" && current.name === "Mansion") repChange = -40;
+          if (home.name === "House" && current.name === "Mansion") repChange = -30;
+        }
+
+        // Apply changes
+        player.cash -= home.cost;
+        player.housing = home.name;
+        player.reputation = Math.max(0, Math.min(100, player.reputation + repChange));
+
+        await saveGame(gameState);
+        updateUI(gameState);
+        alert(`You moved into a ${home.name}! Reputation ${repChange >= 0 ? '+' : ''}${repChange}`);
       };
     });
   }
 
+  // === Clients Section ===
   moreEl.innerHTML += `
     <hr/><h3>👥 Clients</h3>
     <button id="discoverBtn">🔍 Find Clients</button>
@@ -309,8 +347,67 @@ function renderMore(player, gameState) {
     </div>
   `).join("");
 
+  // === Licenses Section ===
+  moreEl.innerHTML += `
+    <hr/><h3>📜 Licenses</h3>
+    <div id="licenseList"></div>
+  `;
+
+  const licenseChoices = getAvailableLicenses(player);
+  const licenseList = document.getElementById("licenseList");
+
+  if (licenseChoices.length === 0) {
+    licenseList.innerHTML = "<p>No licenses available yet.</p>";
+  } else {
+    licenseChoices.forEach(lic => {
+      licenseList.innerHTML += `
+        <div class="license">
+          <strong>${lic.name}</strong> – $${lic.cost}<br/>
+          <em>${lic.description}</em><br/>
+          <span style="color:${player.reputation >= lic.minReputation ? 'lightgreen' : 'red'}">
+            Required Reputation: ${lic.minReputation}
+          </span><br/>
+          <button data-license="${lic.name}">Purchase</button>
+        </div>
+      `;
+    });
+
+    document.querySelectorAll("[data-license]").forEach(btn => {
+      btn.onclick = async () => {
+        const licenseName = btn.getAttribute("data-license");
+        const lic = licenses.find(l => l.name === licenseName);
+
+        if (player.cash >= lic.cost && player.reputation >= lic.minReputation) {
+          player.cash -= lic.cost;
+          player.licenses.push(lic.name);
+
+          // ✅ Reputation boost by license
+          let repBoost = 0;
+          if (lic.name === "Series 7") repBoost = 10;
+          else if (lic.name === "RIA Certification") repBoost = 20;
+          else if (lic.name === "Hedge Fund Manager Permit") repBoost = 10;
+
+          player.reputation = Math.min(100, player.reputation + repBoost);
+
+          await saveGame(gameState);
+          updateUI(gameState);
+          alert(`You obtained the ${lic.name} license! Reputation +${repBoost}`);
+        } 
+        else if (player.reputation < lic.minReputation) {
+          alert(`You need at least ${lic.minReputation} reputation to buy this license.`);
+        } 
+        else {
+          alert("Not enough cash for this license.");
+        }
+      };
+    });
+  }
+
+  // Attach client actions last
   attachClientActions(player, gameState);
 }
+
+
 
 function renderPersonalTab(player, gameState) {
   const personalEl = document.getElementById("personal");

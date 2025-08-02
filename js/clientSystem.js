@@ -18,6 +18,14 @@ export function initClientData(player) {
   if (!player.clientsData) player.clientsData = [];
 }
 
+// --- Helper: Mood multiplier for trust changes ---
+function moodMultiplier(player) {
+  if (!player.mood && player.mood !== 0) return 1;
+  if (player.mood >= 80) return 1.2;    // High mood = +20% effectiveness
+  if (player.mood <= 40) return 0.6;    // Low mood = -40% effectiveness
+  return 1;
+}
+
 // --- Discover a random client ---
 export function discoverClient(player) {
   const undiscovered = CLIENT_POOL.filter(c => {
@@ -46,9 +54,12 @@ export function talkClient(player, name) {
   const client = player.clientsData.find(c => c.name === name);
   if (!client) return "Client not found.";
 
-  client.trust = Math.min(100, client.trust + 5);
+  const mult = moodMultiplier(player);
+  const gain = Math.round(5 * mult);
+
+  client.trust = Math.min(100, client.trust + gain);
   client.lastInteraction = 0;
-  return `${client.name}'s trust increased to ${client.trust}.`;
+  return `${client.name}'s trust increased by ${gain} (Mood effect). Total: ${client.trust}.`;
 }
 
 // --- Pitch investment opportunity ---
@@ -56,14 +67,18 @@ export function pitchClient(player, name) {
   const client = player.clientsData.find(c => c.name === name);
   if (!client) return "Client not found.";
 
-  if (Math.random() < 0.5) {
-    client.trust = Math.min(100, client.trust + 20);
+  const mult = moodMultiplier(player);
+
+  if (Math.random() < 0.5 * mult) {
+    const gain = Math.round(20 * mult);
+    client.trust = Math.min(100, client.trust + gain);
     client.lastInteraction = 0;
-    return `${client.name} loved your pitch! Trust is now ${client.trust}.`;
+    return `${client.name} loved your pitch! Trust +${gain}.`;
   } else {
-    client.trust = Math.max(0, client.trust - 5);
+    const loss = Math.round(5 / mult);
+    client.trust = Math.max(0, client.trust - loss);
     client.lastInteraction = 0;
-    return `${client.name} wasn't convinced. Trust dropped to ${client.trust}.`;
+    return `${client.name} wasn't convinced. Trust -${loss}.`;
   }
 }
 
@@ -72,13 +87,17 @@ export function reviewPortfolio(player, name, roiPercent = 0) {
   const client = player.clientsData.find(c => c.name === name);
   if (!client) return "Client not found.";
 
+  const mult = moodMultiplier(player);
+
   if (client.invested > 0) {
     if (roiPercent > 0) {
-      client.trust = Math.min(100, client.trust + 5);
-      return `${client.name} is happy with their returns! Trust is now ${client.trust}.`;
+      const gain = Math.round(5 * mult);
+      client.trust = Math.min(100, client.trust + gain);
+      return `${client.name} is happy with returns! Trust +${gain}.`;
     } else if (roiPercent < 0) {
-      client.trust = Math.max(0, client.trust - 5);
-      return `${client.name} is upset about losses. Trust dropped to ${client.trust}.`;
+      const loss = Math.round(5 / mult);
+      client.trust = Math.max(0, client.trust - loss);
+      return `${client.name} is upset about losses. Trust -${loss}.`;
     }
   }
   return `${client.name} has no investments yet.`;
