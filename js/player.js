@@ -2,14 +2,14 @@ import { loadGame } from "./firestore.js";
 
 export async function initPlayer() {
   const data = await loadGame();
-  if (data && data.player) {
-    if (!data.player.portfolio) data.player.portfolio = {};
-    if (!data.player.clientsData) {
-      const { getClientList } = await import("./clientSystem.js");
-      data.player.clientsData = getClientList({}); // uses default template
+if (data && data.player && data.player.portfolio) {
+  for (const [symbol, val] of Object.entries(data.player.portfolio)) {
+    if (typeof val === "number") {
+      data.player.portfolio[symbol] = { quantity: val, totalCost: val * 0 };
     }
-    return data.player;
   }
+}
+
 
   // New player
   return {

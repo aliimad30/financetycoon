@@ -67,7 +67,15 @@ updateChart(gameState);
 const stockList = document.getElementById("stockList");
 stockList.innerHTML = "";
 stocks.forEach(stock => {
-  const holding = player.portfolio[stock.symbol] || { quantity: 0, totalCost: 0 };
+  let holding = player.portfolio[stock.symbol];
+
+// Handle old saves (numeric format)
+if (typeof holding === "number") {
+  holding = { quantity: holding, totalCost: holding * stock.price };
+  player.portfolio[stock.symbol] = holding;
+}
+if (!holding) holding = { quantity: 0, totalCost: 0 };
+
   const qty = holding.quantity;
   const cost = holding.totalCost;
   const value = qty * stock.price;
