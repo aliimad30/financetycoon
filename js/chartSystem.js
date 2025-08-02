@@ -1,10 +1,28 @@
 let chart;
 
 export function renderStockChart(stockHistory) {
-  const ctx = document.getElementById("stockChart").getContext("2d");
+  const canvas = document.getElementById("stockChart");
 
-  const labels = stockHistory.map(day => `Day ${day.day}`);
-  const data = stockHistory.map(day => day.price);
+  if (!canvas) {
+    console.warn("❌ stockChart canvas not found in DOM.");
+    return;
+  }
+
+  const ctx = canvas.getContext("2d");
+
+  // Debug: show incoming data
+  console.log("📈 Rendering chart with data:", stockHistory);
+
+  const labels = stockHistory.map((day, i) =>
+    day.day !== undefined ? `Day ${day.day}` : `Day ${i + 1}`
+  );
+
+  const data = stockHistory.map(day =>
+    day.price !== undefined ? day.price : Object.values(day)[0]
+  );
+
+  console.log("📅 Chart Labels:", labels);
+  console.log("💵 Chart Prices:", data);
 
   if (chart) chart.destroy();
 
@@ -13,7 +31,7 @@ export function renderStockChart(stockHistory) {
     data: {
       labels,
       datasets: [{
-        label: "FCO Price",
+        label: "AAPL Price",
         data,
         borderColor: "rgba(0, 200, 255, 0.8)",
         backgroundColor: "rgba(0, 200, 255, 0.2)",
