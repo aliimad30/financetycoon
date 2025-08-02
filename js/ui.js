@@ -113,15 +113,25 @@ document.querySelectorAll(".stock").forEach(card => {
     const symbol = card.getAttribute("data-symbol");
     selectedStock.value = symbol;
 
-    // Toggle action panel
+    // Remove highlight from all cards
+    document.querySelectorAll(".stock").forEach(c => c.classList.remove("selected-stock"));
+
+    // Highlight clicked card
+    card.classList.add("selected-stock");
+
+    // Hide all actions first
     document.querySelectorAll(".stock-actions").forEach(div => div.classList.add("hidden"));
     document.getElementById(`actions-${symbol}`).classList.toggle("hidden");
 
     updateChart(gameState);
-    updateUI(gameState);
   };
 });
 
+// After rebuilding UI
+if (expandedCard) {
+  const expanded = document.getElementById(`actions-${expandedCard}`);
+  if (expanded) expanded.classList.remove("hidden");
+}
 
 
 
