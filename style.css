@@ -82,6 +82,8 @@ em {
 
 canvas#stockChart {
   max-width: 100%;
+  width: 100% !important;
+  height: 250px !important;
   margin: 20px auto;
   display: block;
 }
