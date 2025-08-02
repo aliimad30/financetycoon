@@ -58,7 +58,6 @@ export function updateUI(gameState) {
     `;
 
   // Market tab
- const marketEl = document.getElementById("market");
 renderStockChart(gameState.stockHistory || []);
 
 // Render stock list in a separate container
@@ -76,19 +75,6 @@ stocks.forEach(stock => {
     </div>
   `;
 });
-
-  stocks.forEach(stock => {
-    const owned = player.portfolio[stock.symbol] || 0;
-    marketEl.innerHTML += `
-      <div class="stock">
-        <strong>${stock.symbol}</strong> (${stock.name}): $${stock.price}
-        <br />
-        Owned: ${owned}
-        <button data-buy="${stock.symbol}">Buy</button>
-        <button data-sell="${stock.symbol}">Sell</button>
-      </div>
-    `;
-  });
 
   // Event listeners
   document.querySelectorAll("[data-buy]").forEach(btn => {
