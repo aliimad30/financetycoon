@@ -1,53 +1,49 @@
 let chart;
 
 export function renderStockChart(stockHistory) {
-  const canvas = document.getElementById("stockChart");
-
-  if (!canvas) {
-    console.warn("❌ stockChart canvas not found in DOM.");
-    return;
-  }
-
-  const ctx = canvas.getContext("2d");
-
-  // Debug: show incoming data
   console.log("📈 Rendering chart with data:", stockHistory);
 
-  const labels = stockHistory.map((day, i) =>
-    day.day !== undefined ? `Day ${day.day}` : `Day ${i + 1}`
-  );
+  const ctx = document.getElementById("stockChart")?.getContext("2d");
+  if (!ctx || stockHistory.length === 0) return;
 
-  const data = stockHistory.map(day =>
-    day.price !== undefined ? day.price : Object.values(day)[0]
-  );
+  const labels = stockHistory.map(day => `Day ${day.day}`);
+  const symbols = Object.keys(stockHistory[0]).filter(k => k !== "day");
 
-  console.log("📅 Chart Labels:", labels);
-  console.log("💵 Chart Prices:", data);
+  const datasets = symbols.map(symbol => ({
+    label: symbol,
+    data: stockHistory.map(entry => entry[symbol]),
+    borderColor: getColor(symbol),
+    backgroundColor: getColor(symbol, 0.2),
+    fill: false,
+    tension: 0.3
+  }));
 
   if (chart) chart.destroy();
 
   chart = new Chart(ctx, {
     type: "line",
-    data: {
-      labels,
-      datasets: [{
-        label: "AAPL Price",
-        data,
-        borderColor: "rgba(0, 200, 255, 0.8)",
-        backgroundColor: "rgba(0, 200, 255, 0.2)",
-        tension: 0.3,
-        fill: true
-      }]
-    },
+    data: { labels, datasets },
     options: {
       responsive: true,
-      plugins: {
-        legend: { display: false }
-      },
+      plugins: { legend: { position: "top" } },
       scales: {
         x: { display: true },
         y: { beginAtZero: false }
       }
     }
   });
+
+  console.log("📅 Chart Labels:", labels);
+  console.log("📊 Datasets:", datasets);
+}
+
+function getColor(symbol, alpha = 0.8) {
+  const colorMap = {
+    FCO: `rgba(0, 200, 255, ${alpha})`,
+    MSP: `rgba(255, 99, 132, ${alpha})`,
+    ZEX: `rgba(54, 162, 235, ${alpha})`,
+    TLK: `rgba(75, 192, 192, ${alpha})`,
+    ENV: `rgba(255, 206, 86, ${alpha})`,
+  };
+  return colorMap[symbol] || `rgba(100,100,100,${alpha})`;
 }

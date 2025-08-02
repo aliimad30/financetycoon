@@ -34,15 +34,14 @@ export async function nextDay() {
   // Stock history tracking (for chart)
   if (!gameState.stockHistory) gameState.stockHistory = [];
 
-const aapl = gameState.stocks.find(s => s.symbol === "AAPL");
-if (aapl) {
-  const entry = { day: gameState.day, price: aapl.price };
-  console.log("📊 Pushing to stockHistory:", entry);
-  gameState.stockHistory.push(entry);
-  if (gameState.stockHistory.length > 30) gameState.stockHistory.shift();
-} else {
-  console.warn("⚠️ Could not find AAPL in stocks:", gameState.stocks);
-}
+const historyEntry = { day: gameState.day };
+gameState.stocks.forEach(stock => {
+  historyEntry[stock.symbol] = stock.price;
+});
+
+gameState.stockHistory.push(historyEntry);
+if (gameState.stockHistory.length > 30) gameState.stockHistory.shift();
+
 
 
   // Save and update
