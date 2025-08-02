@@ -11,9 +11,30 @@ import {
   giftClient, 
   discoverClient 
 } from "./clientSystem.js";
-
 import { getAvailableLicenses, licenses } from "./licenseSystem.js";
 import { renderStockChart } from "./chartSystem.js";
+import { getPersonalChoices, initPersonalData } from "./personalSystem.js";
+
+
+function calculateDailyExpenses(player) {
+  let expenses = 0;
+  if (player.personal) {
+    const { diet, insurance, gym, hobby } = player.personal;
+    const { dietOptions, insuranceOptions, gymOptions, hobbyOptions } = getPersonalChoices();
+
+    expenses += (dietOptions.find(d => d.name === diet)?.cost || 0);
+    expenses += (insuranceOptions.find(i => i.name === insurance)?.cost || 0);
+    expenses += (gymOptions.find(g => g.name === gym)?.cost || 0);
+    expenses += (hobbyOptions.find(h => h.name === hobby)?.cost || 0);
+  }
+  // Housing cost if unemployed
+  if (player.job === "Unemployed") {
+    if (player.housing === "Apartment") expenses += 25;
+    if (player.housing === "House") expenses += 50;
+    if (player.housing === "Car") expenses += 10;
+  }
+  return expenses;
+}
 
 
 export let selectedStock = { value: null };
@@ -50,15 +71,35 @@ export function updateUI(gameState) {
   const { player, stocks, day } = gameState;
 
   // Status
-  document.getElementById("status").innerHTML = `
-    <h3>Day ${day}</h3>
-    <p><strong>Job:</strong> ${player.job}</p>
-    <p><strong>Cash:</strong> $${player.cash.toFixed(2)}</p>
-    <p><strong>Housing:</strong> ${player.housing}</p>
-    <p><strong>Reputation:</strong> ${player.reputation}</p>
-    <p><strong>Clients:</strong> ${player.clients}</p>
-    <p><strong>Licenses:</strong> ${player.licenses.join(", ") || "None"}</p>
-  `;
+// Conditional colors
+const healthColor = player.personal?.health >= 70 ? 'lightgreen' : (player.personal?.health >= 40 ? 'orange' : 'red');
+const moodColor = player.mood >= 70 ? 'lightgreen' : (player.mood >= 40 ? 'orange' : 'red');
+const cashColor = player.cash >= 1000 ? 'lightgreen' : (player.cash >= 200 ? 'orange' : 'red');
+const repColor = player.reputation >= 50 ? 'lightgreen' : 'orange';
+
+document.getElementById("status").innerHTML = `
+  <div class="dashboard-card">
+    <h2>📅 Day ${day}</h2>
+    <div class="dash-row"><strong>Job:</strong> ${player.job}</div>
+    <div class="dash-row"><strong>Housing:</strong> ${player.housing}</div>
+    <div class="dash-row"><strong>Clients:</strong> ${player.clients}</div>
+    <div class="dash-row"><strong>Licenses:</strong> ${player.licenses.join(", ") || "None"}</div>
+  </div>
+
+  <div class="dashboard-card">
+    <h3>💰 Finances</h3>
+    <div class="dash-row" style="color:${cashColor}"><strong>Cash:</strong> $${player.cash.toFixed(2)}</div>
+    <div class="dash-row"><strong>Daily Expenses:</strong> $${calculateDailyExpenses(player)}</div>
+    <div class="dash-row" style="color:${repColor}"><strong>Reputation:</strong> ${player.reputation}</div>
+  </div>
+
+  <div class="dashboard-card">
+    <h3>❤️ Well-being</h3>
+    <div class="dash-row" style="color:${healthColor}"><strong>Health:</strong> ${player.personal?.health ?? 70}</div>
+    <div class="dash-row" style="color:${moodColor}"><strong>Mood:</strong> ${player.mood ?? 70}</div>
+  </div>
+`;
+
 
   // Stock Market
   updateChart(gameState);
@@ -111,11 +152,29 @@ export function updateUI(gameState) {
   attachTradeListeners(player, stocks, gameState);
   renderJobs(player);
   renderMore(player, gameState);
+
+if (document.getElementById("personal")) {
+  if (!player.personal) {
+    initPersonalData(player);
+  }
+  renderPersonalTab(player, gameState);
+}
+
+  // Restore expanded card after UI refresh
+if (expandedCard) {
+  const expanded = document.getElementById(`actions-${expandedCard}`);
+  if (expanded) {
+    expanded.classList.remove("hidden");
+    document.querySelector(`[data-symbol="${expandedCard}"]`)?.classList.add("selected-stock");
+  }
+}
+
 }
 
 function attachTradeListeners(player, stocks, gameState) {
   document.querySelectorAll("[data-buy]").forEach(btn => {
     btn.onclick = async () => {
+        expandedCard = btn.getAttribute("data-buy"); // ✅ Remember card
       if (!useAction(player)) return;
       const symbol = btn.getAttribute("data-buy");
       const stock = stocks.find(s => s.symbol === symbol);
@@ -128,6 +187,7 @@ function attachTradeListeners(player, stocks, gameState) {
 
   document.querySelectorAll("[data-sell]").forEach(btn => {
     btn.onclick = async () => {
+        expandedCard = btn.getAttribute("data-buy"); // ✅ Remember card
       if (!useAction(player)) return;
       const symbol = btn.getAttribute("data-sell");
       const stock = stocks.find(s => s.symbol === symbol);
@@ -140,6 +200,7 @@ function attachTradeListeners(player, stocks, gameState) {
 
   document.querySelectorAll("[data-sellall]").forEach(btn => {
     btn.onclick = async () => {
+        expandedCard = btn.getAttribute("data-buy"); // ✅ Remember card
       if (!useAction(player)) return;
       const symbol = btn.getAttribute("data-sellall");
       const stock = stocks.find(s => s.symbol === symbol);
@@ -152,6 +213,7 @@ function attachTradeListeners(player, stocks, gameState) {
     };
   });
 }
+
 
 function renderJobs(player) {
   const jobsEl = document.getElementById("jobs");
@@ -249,6 +311,51 @@ function renderMore(player, gameState) {
 
   attachClientActions(player, gameState);
 }
+
+function renderPersonalTab(player, gameState) {
+  const personalEl = document.getElementById("personal");
+  personalEl.innerHTML = `<h3>🧍 Personal Preferences</h3>`;
+
+  const { dietOptions, insuranceOptions, gymOptions, hobbyOptions } = getPersonalChoices();
+
+  // Render current stats
+  personalEl.innerHTML += `
+    <p><strong>Health:</strong> ${player.personal?.health ?? 70}</p>
+    <p><strong>Mood:</strong> ${player.mood ?? 70}</p>
+    <p><strong>Reputation:</strong> ${player.reputation}</p>
+    <hr/>
+  `;
+
+  // Helper to create choice buttons
+  function renderChoices(title, list, current, type) {
+    let html = `<h4>${title}</h4>`;
+    list.forEach(opt => {
+      html += `
+        <button data-choice="${type}" data-value="${opt.name}" ${opt.name === current ? "style='background:green;'" : ""}>
+          ${opt.name} ($${opt.cost}/day)
+        </button><br/>
+      `;
+    });
+    return html;
+  }
+
+  personalEl.innerHTML += renderChoices("Diet", dietOptions, player.personal?.diet ?? "Budget Diet", "diet");
+  personalEl.innerHTML += renderChoices("Health Insurance", insuranceOptions, player.personal.insurance, "insurance");
+  personalEl.innerHTML += renderChoices("Gym Membership", gymOptions, player.personal.gym, "gym");
+  personalEl.innerHTML += renderChoices("Hobby/Social Life", hobbyOptions, player.personal.hobby, "hobby");
+
+  // Attach listeners
+  document.querySelectorAll("[data-choice]").forEach(btn => {
+    btn.onclick = async () => {
+      const type = btn.getAttribute("data-choice");
+      const value = btn.getAttribute("data-value");
+      player.personal[type] = value;
+      await saveGame(gameState);
+      renderPersonalTab(player, gameState);
+    };
+  });
+}
+
 
 function attachClientActions(player, gameState) {
   ["talk", "pitch", "review", "gift"].forEach(type => {

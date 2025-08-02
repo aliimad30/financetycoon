@@ -64,7 +64,8 @@ export function getDailyIncome(player) {
 
 export function getAvailableJobs(player) {
   return jobList.filter(job => {
-    if (job.title === player.job) return false;
+    if (job.title === player.job) return false; // already in this job
+    if (job.title === "Unemployed") return false; // cannot apply to be unemployed
 
     return job.requirements.every(req => {
       if (req.type === "license") return player.licenses.includes(req.value);

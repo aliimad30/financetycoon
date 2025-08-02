@@ -112,3 +112,20 @@ canvas#stockChart {
   margin-top: 5px;
 }
 
+.dashboard-card {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 10px;
+  margin: 8px 0;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+.dash-row {
+  margin: 4px 0;
+  font-size: 0.95em;
+}
+
+.dashboard-card h2, .dashboard-card h3 {
+  margin: 0 0 6px 0;
+  text-align: left;
+}

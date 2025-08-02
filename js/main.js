@@ -48,6 +48,19 @@ export async function nextDay() {
   gameState.player.cash += getDailyIncome(gameState.player);
   updateMarket(gameState.stocks);
 
+// Personal expenses and effects
+  applyDailyPersonalEffects(gameState.player);
+
+  // Deduct daily expenses if unemployed
+    let baseExpense = 5; // food, minimal cost
+    if (gameState.player.job === "Unemployed") {
+  if (gameState.player.housing === "Apartment") baseExpense = 25; // rent
+  else if (gameState.player.housing === "House") baseExpense = 50; // mortgage
+  else baseExpense = 10; // car living cost
+
+  gameState.player.cash = Math.max(0, gameState.player.cash - baseExpense);
+    }
+
   // ✅ Update clients daily (trust decay, patience check)
   updateClientsDaily(gameState.player);
 

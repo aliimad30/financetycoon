@@ -24,6 +24,14 @@ if (data && data.player && data.player.portfolio) {
     mood: 70,
     actionsLeft: 3,
     portfolio: {},
+    personal: {
+  diet: "Budget Diet",
+  insurance: "None",
+  gym: "None",
+  hobby: "None",
+  health: 70
+},
+
     clientsData: [] // <-- ensure it exists
     
   };
