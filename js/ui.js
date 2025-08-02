@@ -67,32 +67,53 @@ updateChart(gameState);
 const stockList = document.getElementById("stockList");
 stockList.innerHTML = "";
 stocks.forEach(stock => {
-  const owned = player.portfolio[stock.symbol] || 0;
-stockList.innerHTML += `
-  <div class="stock ${selectedStock.value === stock.symbol ? "selected-stock" : ""}" data-symbol="${stock.symbol}">
-    <strong>${stock.symbol}</strong> (${stock.name}): $${stock.price}
-    <br />
-    Owned: ${owned}
-    <input type="number" min="1" value="1" style="width:50px;" data-qty="${stock.symbol}" />
-    <button data-buy="${stock.symbol}">Buy</button>
-    <button data-sell="${stock.symbol}">Sell</button>
-    <button data-sellall="${stock.symbol}">Sell All</button>
-  </div>
-`;
+  const holding = player.portfolio[stock.symbol] || { quantity: 0, totalCost: 0 };
+  const qty = holding.quantity;
+  const cost = holding.totalCost;
+  const value = qty * stock.price;
+  const profit = value - cost;
 
-
+  stockList.innerHTML += `
+    <div class="stock ${selectedStock.value === stock.symbol ? "selected-stock" : ""}" data-symbol="${stock.symbol}">
+      <div class="stock-row">
+        <span class="symbol">${stock.symbol}</span>
+        <span class="price">$${stock.price}</span>
+        <span class="owned">Owned: ${qty}</span>
+      </div>
+      <div class="stock-row small-text">
+        Cost: $${cost.toFixed(2)} | Value: $${value.toFixed(2)} 
+        <span style="float:right; color:${profit >= 0 ? 'lightgreen' : 'red'};">
+          ${profit >= 0 ? '+' : ''}${profit.toFixed(2)}
+        </span>
+      </div>
+      <div class="stock-actions hidden" id="actions-${stock.symbol}">
+        <input type="number" min="1" value="1" style="width:50px;" data-qty="${stock.symbol}" />
+        <button data-buy="${stock.symbol}">Buy</button>
+        <button data-sell="${stock.symbol}">Sell</button>
+        <button data-sellall="${stock.symbol}">Sell All</button>
+      </div>
+    </div>
+  `;
 });
+
 
 // Click on stock card to show only that stock's chart
 document.querySelectorAll(".stock").forEach(card => {
   card.onclick = (e) => {
-    // Avoid triggering on button clicks
     if (e.target.tagName === "BUTTON" || e.target.tagName === "INPUT") return;
-    selectedStock.value = card.getAttribute("data-symbol");
+
+    const symbol = card.getAttribute("data-symbol");
+    selectedStock.value = symbol;
+
+    // Toggle action panel
+    document.querySelectorAll(".stock-actions").forEach(div => div.classList.add("hidden"));
+    document.getElementById(`actions-${symbol}`).classList.toggle("hidden");
+
     updateChart(gameState);
-    updateUI(gameState); // refresh to highlight selected
+    updateUI(gameState);
   };
 });
+
 
 
 

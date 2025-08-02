@@ -92,3 +92,22 @@ canvas#stockChart {
   background: rgba(0, 200, 0, 0.3);
   border: 1px solid #00cc00;
 }
+
+.stock-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0;
+}
+
+.small-text {
+  font-size: 0.85em;
+  color: #ccc;
+}
+
+.hidden {
+  display: none;
+}
+
+.stock-actions {
+  margin-top: 5px;
+}
