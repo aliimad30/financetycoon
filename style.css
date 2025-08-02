@@ -79,3 +79,9 @@ em {
   font-style: italic;
   color: #ccc;
 }
+
+canvas#stockChart {
+  max-width: 100%;
+  margin: 20px auto;
+  display: block;
+}

@@ -11,18 +11,16 @@ let gameState = {
 };
 
 async function startGame() {
-  // Load or create player
   gameState.player = await initPlayer();
-
-  // Load stock data (can be random or simulated)
   gameState.stocks = getStocks();
-
-  // Render initial UI
+  gameState.stockHistory = [{
+    day: gameState.day,
+    price: gameState.stocks[0].price
+  }];
   initUI(gameState);
-
-  // Update display
   updateUI(gameState);
 }
+
 
 export async function nextDay() {
   gameState.day += 1;
