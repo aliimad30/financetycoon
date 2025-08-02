@@ -5,6 +5,8 @@ import { getAvailableJobs, getDailyIncome } from "./jobSystem.js";
 import { getAvailableHousing, housingOptions } from "./housingSystem.js";
 import { getClientList, increaseTrust } from "./clientSystem.js";
 import { getAvailableLicenses, licenses } from "./licenseSystem.js";
+import { renderStockChart } from "./chartSystem.js";
+
 
 
 let stateRef;
@@ -58,6 +60,8 @@ export function updateUI(gameState) {
   // Market tab
   const marketEl = document.getElementById("market");
   marketEl.innerHTML = `<h3>Stock Market</h3>`;
+  renderStockChart(gameState.stockHistory || []);
+
   stocks.forEach(stock => {
     const owned = player.portfolio[stock.symbol] || 0;
     marketEl.innerHTML += `

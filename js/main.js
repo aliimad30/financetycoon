@@ -32,6 +32,10 @@ export async function nextDay() {
 
   // Simulate market
   updateMarket(gameState.stocks);
+  if (!state.stockHistory) state.stockHistory = [];
+state.stockHistory.push({ day: state.day, price: state.stocks[0].price });
+if (state.stockHistory.length > 30) state.stockHistory.shift(); // keep 30 days max
+
 
   // Save progress
   await saveGame(gameState);

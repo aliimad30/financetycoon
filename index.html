@@ -11,6 +11,8 @@
 
   <!-- Styles -->
   <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 </head>
 <body>
 <main id="game">
@@ -24,7 +26,12 @@
   </nav>
 
   <section id="dashboard" class="tab"></section>
-  <section id="market" class="tab"></section>
+  <section id="market" class="tab">
+  <h3>📈 Stock Market</h3>
+  <canvas id="stockChart" height="200"></canvas>
+  <!-- Stock list will be added by JS -->
+</section>
+
   <section id="jobs" class="tab"></section>
   <section id="more" class="tab"></section>
 </main>
