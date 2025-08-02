@@ -59,7 +59,11 @@ export function updateUI(gameState) {
 
   // Market tab
   const marketEl = document.getElementById("market");
-  marketEl.innerHTML = `<h3>Stock Market</h3>`;
+  marketEl.innerHTML = `
+  <h3>📈 Stock Market</h3>
+  <canvas id="stockChart" height="200"></canvas>
+`;
+
   renderStockChart(gameState.stockHistory || []);
 
   stocks.forEach(stock => {
