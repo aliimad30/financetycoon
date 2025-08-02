@@ -13,10 +13,12 @@ let gameState = {
 async function startGame() {
   gameState.player = await initPlayer();
   gameState.stocks = getStocks();
-  gameState.stockHistory = [{
-    day: gameState.day,
-    price: gameState.stocks[0].price
-  }];
+  const day1Entry = { day: gameState.day };
+gameState.stocks.forEach(stock => {
+  day1Entry[stock.symbol] = stock.price;
+});
+gameState.stockHistory = [day1Entry];
+
   initUI(gameState);
   updateUI(gameState);
 }

@@ -7,7 +7,8 @@ export function renderStockChart(stockHistory) {
   if (!ctx || stockHistory.length === 0) return;
 
   const labels = stockHistory.map(day => `Day ${day.day}`);
-  const symbols = Object.keys(stockHistory[0]).filter(k => k !== "day");
+const symbols = Object.keys(stockHistory[0]).filter(k => k !== "day");
+
 
   const datasets = symbols.map(symbol => ({
     label: symbol,
