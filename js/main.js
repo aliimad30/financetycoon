@@ -36,7 +36,8 @@ export async function nextDay() {
 
   const aapl = gameState.stocks.find(s => s.symbol === "AAPL");
   if (aapl) {
-    gameState.stockHistory.push({ AAPL: aapl.price });
+    gameState.stockHistory.push({ day: gameState.day, price: aapl.price });
+
     if (gameState.stockHistory.length > 30) gameState.stockHistory.shift();
   }
 
