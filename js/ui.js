@@ -59,13 +59,23 @@ export function updateUI(gameState) {
 
   // Market tab
  const marketEl = document.getElementById("market");
-marketEl.innerHTML = `
-  <h3>📈 Stock Market</h3>
-  <canvas id="stockChart" width="600" height="300" style="border:1px solid red;display:block;margin:auto;"></canvas>
-`;
+renderStockChart(gameState.stockHistory || []);
 
-
-  renderStockChart(gameState.stockHistory || []);
+// Render stock list in a separate container
+const stockList = document.getElementById("stockList");
+stockList.innerHTML = "";
+stocks.forEach(stock => {
+  const owned = player.portfolio[stock.symbol] || 0;
+  stockList.innerHTML += `
+    <div class="stock">
+      <strong>${stock.symbol}</strong> (${stock.name}): $${stock.price}
+      <br />
+      Owned: ${owned}
+      <button data-buy="${stock.symbol}">Buy</button>
+      <button data-sell="${stock.symbol}">Sell</button>
+    </div>
+  `;
+});
 
   stocks.forEach(stock => {
     const owned = player.portfolio[stock.symbol] || 0;

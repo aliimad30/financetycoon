@@ -1,18 +1,15 @@
 let chart;
 
 export function renderStockChart(stockHistory) {
-  const ctx = document.getElementById("stockChart").getContext("2d");
+  const ctx = document.getElementById("stockChart");
+  if (!ctx || stockHistory.length === 0) return;
 
-  // Ensure canvas has proper size before drawing
-  ctx.canvas.width = ctx.canvas.clientWidth || 600;
-  ctx.canvas.height = ctx.canvas.clientHeight || 300;
-
-  console.log("📈 Rendering chart with data:", stockHistory);
+  const context = ctx.getContext("2d");
+  if (chart) chart.destroy();
 
   const labels = stockHistory.map(day => `Day ${day.day}`);
-  
-  // Get all stock symbols
   const symbols = Object.keys(stockHistory[0]).filter(k => k !== "day");
+
   const datasets = symbols.map((symbol, idx) => {
     const colors = [
       "rgba(0, 200, 255, 0.8)",
@@ -21,34 +18,20 @@ export function renderStockChart(stockHistory) {
       "rgba(75, 192, 192, 0.8)",
       "rgba(255, 206, 86, 0.8)"
     ];
-    const backgroundColors = colors.map(c => c.replace("0.8", "0.2"));
     return {
       label: symbol,
       data: stockHistory.map(d => d[symbol]),
       borderColor: colors[idx % colors.length],
-      backgroundColor: backgroundColors[idx % colors.length],
+      backgroundColor: colors[idx % colors.length].replace("0.8", "0.2"),
       fill: false,
       tension: 0.3
     };
   });
 
-  if (chart) chart.destroy();
-console.log("✅ Final datasets going into chart:", datasets);
-  chart = new Chart(ctx, {
+  chart = new Chart(context, {
     type: "line",
-    data: {
-      labels,
-      datasets
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { display: true }
-      },
-      scales: {
-        x: { display: true },
-        y: { beginAtZero: false }
-      }
-    }
+    data: { labels, datasets },
+    options: { responsive: true }
   });
 }
+
