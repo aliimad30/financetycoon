@@ -87,3 +87,8 @@ canvas#stockChart {
   margin: 20px auto;
   display: block;
 }
+
+.selected-stock {
+  background: rgba(0, 200, 0, 0.3);
+  border: 1px solid #00cc00;
+}

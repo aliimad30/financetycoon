@@ -66,48 +66,90 @@ const stockList = document.getElementById("stockList");
 stockList.innerHTML = "";
 stocks.forEach(stock => {
   const owned = player.portfolio[stock.symbol] || 0;
-  stockList.innerHTML += `
-    <div class="stock" data-symbol="${stock.symbol}">
-      <strong>${stock.symbol}</strong> (${stock.name}): $${stock.price}
-      <br />
-      Owned: ${owned}
-      <button data-buy="${stock.symbol}">Buy</button>
-      <button data-sell="${stock.symbol}">Sell</button>
-    </div>
-  `;
+stockList.innerHTML += `
+  <div class="stock ${selectedStock === stock.symbol ? "selected-stock" : ""}" data-symbol="${stock.symbol}">
+    <strong>${stock.symbol}</strong> (${stock.name}): $${stock.price}
+    <br />
+    Owned: ${owned}
+    <input type="number" min="1" value="1" style="width:50px;" data-qty="${stock.symbol}" />
+    <button data-buy="${stock.symbol}">Buy</button>
+    <button data-sell="${stock.symbol}">Sell</button>
+    <button data-sellall="${stock.symbol}">Sell All</button>
+  </div>
+`;
+
 });
 
 // Click on stock card to show only that stock's chart
 document.querySelectorAll(".stock").forEach(card => {
-  card.onclick = () => {
+  card.onclick = (e) => {
+    // Avoid triggering on button clicks
+    if (e.target.tagName === "BUTTON" || e.target.tagName === "INPUT") return;
     selectedStock = card.getAttribute("data-symbol");
     updateChart(gameState);
+    updateUI(gameState); // refresh to highlight selected
   };
 });
 
 
-  // Event listeners
-  document.querySelectorAll("[data-buy]").forEach(btn => {
-    btn.onclick = async () => {
-      const symbol = btn.getAttribute("data-buy");
-      const stock = stocks.find(s => s.symbol === symbol);
-      if (buyStock(player, symbol, stock.price)) {
-        await saveGame(gameState);
-        updateUI(gameState);
-      }
-    };
-  });
 
-  document.querySelectorAll("[data-sell]").forEach(btn => {
-    btn.onclick = async () => {
-      const symbol = btn.getAttribute("data-sell");
-      const stock = stocks.find(s => s.symbol === symbol);
-      if (sellStock(player, symbol, stock.price)) {
-        await saveGame(gameState);
-        updateUI(gameState);
+  // Event listeners
+document.querySelectorAll("[data-buy]").forEach(btn => {
+  btn.onclick = async () => {
+    const symbol = btn.getAttribute("data-buy");
+    const qtyInput = document.querySelector(`[data-qty="${symbol}"]`);
+    const quantity = parseInt(qtyInput.value) || 1;
+    const stock = stocks.find(s => s.symbol === symbol);
+
+    let success = true;
+    for (let i = 0; i < quantity; i++) {
+      if (!buyStock(player, symbol, stock.price)) {
+        success = false;
+        break;
       }
-    };
-  });
+    }
+    if (success) {
+      await saveGame(gameState);
+      updateUI(gameState);
+    }
+  };
+});
+
+document.querySelectorAll("[data-sell]").forEach(btn => {
+  btn.onclick = async () => {
+    const symbol = btn.getAttribute("data-sell");
+    const qtyInput = document.querySelector(`[data-qty="${symbol}"]`);
+    const quantity = parseInt(qtyInput.value) || 1;
+    const stock = stocks.find(s => s.symbol === symbol);
+
+    let success = true;
+    for (let i = 0; i < quantity; i++) {
+      if (!sellStock(player, symbol, stock.price)) {
+        success = false;
+        break;
+      }
+    }
+    if (success) {
+      await saveGame(gameState);
+      updateUI(gameState);
+    }
+  };
+});
+
+document.querySelectorAll("[data-sellall]").forEach(btn => {
+  btn.onclick = async () => {
+    const symbol = btn.getAttribute("data-sellall");
+    const stock = stocks.find(s => s.symbol === symbol);
+    const owned = player.portfolio[symbol] || 0;
+
+    for (let i = 0; i < owned; i++) {
+      sellStock(player, symbol, stock.price);
+    }
+    await saveGame(gameState);
+    updateUI(gameState);
+  };
+});
+
 
   // Jobs tab
   const jobsEl = document.getElementById("jobs");
