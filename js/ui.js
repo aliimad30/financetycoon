@@ -8,8 +8,9 @@ import { getAvailableLicenses, licenses } from "./licenseSystem.js";
 import { renderStockChart } from "./chartSystem.js";
 
 
-let selectedStock = null;
+export let selectedStock = window.selectedStock || null;
 let stateRef;
+
 
 
 export function initUI(gameState) {
@@ -77,6 +78,7 @@ stockList.innerHTML += `
     <button data-sellall="${stock.symbol}">Sell All</button>
   </div>
 `;
+
 
 });
 
@@ -304,16 +306,14 @@ moreEl.innerHTML += `
 }
 
 function updateChart(gameState) {
-  // Filter history for selected stock or show nothing if null
   if (!selectedStock) {
-    renderStockChart([]);
+    renderStockChart([], "");
     return;
   }
-
   const filteredData = gameState.stockHistory.map(day => ({
     day: day.day,
     [selectedStock]: day[selectedStock]
   }));
-
-  renderStockChart(filteredData);
+  renderStockChart(filteredData, selectedStock);
 }
+

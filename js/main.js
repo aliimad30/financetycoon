@@ -13,11 +13,26 @@ let gameState = {
 async function startGame() {
   gameState.player = await initPlayer();
   gameState.stocks = getStocks();
-  const day1Entry = { day: gameState.day };
-gameState.stocks.forEach(stock => {
-  day1Entry[stock.symbol] = stock.price;
-});
-gameState.stockHistory = [day1Entry];
+
+  // Generate 30 days of random history for each stock
+  const history = [];
+  for (let day = 1; day <= 30; day++) {
+    const entry = { day };
+    gameState.stocks.forEach(stock => {
+      // start price base around stock initial price
+      let lastPrice = history.length > 0 ? history[history.length-1][stock.symbol] : stock.price;
+      let volatility = 0.05 + Math.random() * 0.07;
+      let direction = (Math.random() - 0.5) * 2; // -1 to 1
+      let change = lastPrice * volatility * direction;
+      entry[stock.symbol] = Math.max(1, Math.round(lastPrice + change));
+    });
+    history.push(entry);
+  }
+  gameState.stockHistory = history;
+
+  // Select a random stock to highlight and show
+  const symbols = gameState.stocks.map(s => s.symbol);
+  window.selectedStock = symbols[Math.floor(Math.random() * symbols.length)];
 
   initUI(gameState);
   updateUI(gameState);
