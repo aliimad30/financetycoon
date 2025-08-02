@@ -1,45 +1,47 @@
 import { nextDay } from "./main.js";
 import { buyStock, sellStock } from "./trading.js";
 import { saveGame } from "./firestore.js";
-import { getAvailableJobs, getDailyIncome } from "./jobSystem.js";
+import { getAvailableJobs } from "./jobSystem.js";
 import { getAvailableHousing, housingOptions } from "./housingSystem.js";
-import { getClientList, increaseTrust } from "./clientSystem.js";
+import { 
+  getClientList, 
+  talkClient, 
+  pitchClient, 
+  reviewPortfolio as reviewClient, 
+  giftClient, 
+  discoverClient 
+} from "./clientSystem.js";
+
 import { getAvailableLicenses, licenses } from "./licenseSystem.js";
 import { renderStockChart } from "./chartSystem.js";
 
 
 export let selectedStock = { value: null };
-
+let expandedCard = null;
 let stateRef;
-
-
 
 export function initUI(gameState) {
   stateRef = gameState;
 
-  // Handle tab switching
-document.querySelectorAll("#tabs button").forEach(btn => {
-  btn.addEventListener("click", () => {
-    const tab = btn.getAttribute("data-tab");
-    document.querySelectorAll(".tab").forEach(sec => sec.classList.remove("active"));
-    document.getElementById(tab).classList.add("active");
+  // Tab switching
+  document.querySelectorAll("#tabs button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const tab = btn.getAttribute("data-tab");
+      document.querySelectorAll(".tab").forEach(sec => sec.classList.remove("active"));
+      document.getElementById(tab).classList.add("active");
+    });
   });
-});
-
 
   // Default to dashboard
   document.querySelector("[data-tab='dashboard']").click();
 
-  // Add next day button
+  // Dashboard content
   const dash = document.getElementById("dashboard");
   dash.innerHTML = `
     <div id="status"></div>
     <button id="nextDayBtn">Next Day</button>
   `;
-
-  document.getElementById("nextDayBtn").addEventListener("click", () => {
-    nextDay();
-  });
+  document.getElementById("nextDayBtn").addEventListener("click", () => nextDay());
 
   updateUI(gameState);
 }
@@ -47,7 +49,7 @@ document.querySelectorAll("#tabs button").forEach(btn => {
 export function updateUI(gameState) {
   const { player, stocks, day } = gameState;
 
-  // Dashboard tab
+  // Status
   document.getElementById("status").innerHTML = `
     <h3>Day ${day}</h3>
     <p><strong>Job:</strong> ${player.job}</p>
@@ -55,305 +57,236 @@ export function updateUI(gameState) {
     <p><strong>Housing:</strong> ${player.housing}</p>
     <p><strong>Reputation:</strong> ${player.reputation}</p>
     <p><strong>Clients:</strong> ${player.clients}</p>
-<p><strong>Licenses:</strong> ${player.licenses.join(", ") || "None"}</p>
- 
-    `;
-
-  // Market tab
-updateChart(gameState);
-
-
-// Render stock list in a separate container
-const stockList = document.getElementById("stockList");
-stockList.innerHTML = "";
-stocks.forEach(stock => {
-  let holding = player.portfolio[stock.symbol];
-
-// Handle old saves (numeric format)
-if (typeof holding === "number") {
-  holding = { quantity: holding, totalCost: holding * stock.price };
-  player.portfolio[stock.symbol] = holding;
-}
-if (!holding) holding = { quantity: 0, totalCost: 0 };
-
-  const qty = holding.quantity;
-  const cost = holding.totalCost;
-  const value = qty * stock.price;
-  const profit = value - cost;
-
-  stockList.innerHTML += `
-    <div class="stock ${selectedStock.value === stock.symbol ? "selected-stock" : ""}" data-symbol="${stock.symbol}">
-      <div class="stock-row">
-        <span class="symbol">${stock.symbol}</span>
-        <span class="price">$${stock.price}</span>
-        <span class="owned">Owned: ${qty}</span>
-      </div>
-      <div class="stock-row small-text">
-        Cost: $${cost.toFixed(2)} | Value: $${value.toFixed(2)} 
-        <span style="float:right; color:${profit >= 0 ? 'lightgreen' : 'red'};">
-          ${profit >= 0 ? '+' : ''}${profit.toFixed(2)}
-        </span>
-      </div>
-      <div class="stock-actions hidden" id="actions-${stock.symbol}">
-        <input type="number" min="1" value="1" style="width:50px;" data-qty="${stock.symbol}" />
-        <button data-buy="${stock.symbol}">Buy</button>
-        <button data-sell="${stock.symbol}">Sell</button>
-        <button data-sellall="${stock.symbol}">Sell All</button>
-      </div>
-    </div>
+    <p><strong>Licenses:</strong> ${player.licenses.join(", ") || "None"}</p>
   `;
-});
 
+  // Stock Market
+  updateChart(gameState);
+  const stockList = document.getElementById("stockList");
+  stockList.innerHTML = "";
+  stocks.forEach(stock => {
+    let holding = player.portfolio[stock.symbol] || { quantity: 0, totalCost: 0 };
+    const qty = holding.quantity;
+    const cost = holding.totalCost;
+    const value = qty * stock.price;
+    const profit = value - cost;
+    const avgPrice = qty > 0 ? (cost / qty) : 0;
 
-// Click on stock card to show only that stock's chart
-document.querySelectorAll(".stock").forEach(card => {
-  card.onclick = (e) => {
-    if (e.target.tagName === "BUTTON" || e.target.tagName === "INPUT") return;
+    stockList.innerHTML += `
+      <div class="stock ${selectedStock.value === stock.symbol ? "selected-stock" : ""}" data-symbol="${stock.symbol}">
+        <div class="stock-row">
+          <span class="symbol">${stock.symbol}</span>
+          <span class="price">$${stock.price}</span>
+          <span class="owned">Owned: ${qty}</span>
+        </div>
+        <div class="stock-row small-text">
+          Avg: $${avgPrice.toFixed(2)} | Cost: $${cost.toFixed(2)} | Value: $${value.toFixed(2)} 
+          <span style="float:right; color:${profit >= 0 ? 'lightgreen' : 'red'};">
+            ${profit >= 0 ? '+' : ''}${profit.toFixed(2)}
+          </span>
+        </div>
+        <div class="stock-actions hidden" id="actions-${stock.symbol}">
+          <input type="number" min="1" value="1" style="width:50px;" data-qty="${stock.symbol}" />
+          <button data-buy="${stock.symbol}">Buy</button>
+          <button data-sell="${stock.symbol}">Sell</button>
+          <button data-sellall="${stock.symbol}">Sell All</button>
+        </div>
+      </div>
+    `;
+  });
 
-    const symbol = card.getAttribute("data-symbol");
-    selectedStock.value = symbol;
+  document.querySelectorAll(".stock").forEach(card => {
+    card.onclick = e => {
+      if (["BUTTON", "INPUT"].includes(e.target.tagName)) return;
+      const symbol = card.getAttribute("data-symbol");
+      selectedStock.value = symbol;
+      document.querySelectorAll(".stock").forEach(c => c.classList.remove("selected-stock"));
+      card.classList.add("selected-stock");
+      document.querySelectorAll(".stock-actions").forEach(div => div.classList.add("hidden"));
+      document.getElementById(`actions-${symbol}`).classList.toggle("hidden");
+      updateChart(gameState);
+    };
+  });
 
-    // Remove highlight from all cards
-    document.querySelectorAll(".stock").forEach(c => c.classList.remove("selected-stock"));
-
-    // Highlight clicked card
-    card.classList.add("selected-stock");
-
-    // Hide all actions first
-    document.querySelectorAll(".stock-actions").forEach(div => div.classList.add("hidden"));
-    document.getElementById(`actions-${symbol}`).classList.toggle("hidden");
-
-    updateChart(gameState);
-  };
-});
-
-// After rebuilding UI
-if (expandedCard) {
-  const expanded = document.getElementById(`actions-${expandedCard}`);
-  if (expanded) expanded.classList.remove("hidden");
+  attachTradeListeners(player, stocks, gameState);
+  renderJobs(player);
+  renderMore(player, gameState);
 }
 
-
-
-  // Event listeners
-document.querySelectorAll("[data-buy]").forEach(btn => {
-  btn.onclick = async () => {
-    const symbol = btn.getAttribute("data-buy");
-    const qtyInput = document.querySelector(`[data-qty="${symbol}"]`);
-    const quantity = parseInt(qtyInput.value) || 1;
-    const stock = stocks.find(s => s.symbol === symbol);
-
-    let success = true;
-    for (let i = 0; i < quantity; i++) {
-      if (!buyStock(player, symbol, stock.price)) {
-        success = false;
-        break;
-      }
-    }
-    if (success) {
+function attachTradeListeners(player, stocks, gameState) {
+  document.querySelectorAll("[data-buy]").forEach(btn => {
+    btn.onclick = async () => {
+      if (!useAction(player)) return;
+      const symbol = btn.getAttribute("data-buy");
+      const stock = stocks.find(s => s.symbol === symbol);
+      const qty = parseInt(document.querySelector(`[data-qty="${symbol}"]`).value) || 1;
+      for (let i = 0; i < qty; i++) if (!buyStock(player, symbol, stock.price)) return;
       await saveGame(gameState);
       updateUI(gameState);
-    }
-  };
-});
+    };
+  });
 
-document.querySelectorAll("[data-sell]").forEach(btn => {
-  btn.onclick = async () => {
-    const symbol = btn.getAttribute("data-sell");
-    const qtyInput = document.querySelector(`[data-qty="${symbol}"]`);
-    const quantity = parseInt(qtyInput.value) || 1;
-    const stock = stocks.find(s => s.symbol === symbol);
-
-    let success = true;
-    for (let i = 0; i < quantity; i++) {
-      if (!sellStock(player, symbol, stock.price)) {
-        success = false;
-        break;
-      }
-    }
-    if (success) {
+  document.querySelectorAll("[data-sell]").forEach(btn => {
+    btn.onclick = async () => {
+      if (!useAction(player)) return;
+      const symbol = btn.getAttribute("data-sell");
+      const stock = stocks.find(s => s.symbol === symbol);
+      const qty = parseInt(document.querySelector(`[data-qty="${symbol}"]`).value) || 1;
+      for (let i = 0; i < qty; i++) if (!sellStock(player, symbol, stock.price)) return;
       await saveGame(gameState);
       updateUI(gameState);
-    }
-  };
-});
+    };
+  });
 
-document.querySelectorAll("[data-sellall]").forEach(btn => {
-  btn.onclick = async () => {
-    const symbol = btn.getAttribute("data-sellall");
-    const stock = stocks.find(s => s.symbol === symbol);
-    const owned = player.portfolio[symbol] || 0;
+  document.querySelectorAll("[data-sellall]").forEach(btn => {
+    btn.onclick = async () => {
+      if (!useAction(player)) return;
+      const symbol = btn.getAttribute("data-sellall");
+      const stock = stocks.find(s => s.symbol === symbol);
+      const holding = player.portfolio[symbol];
+      if (!holding || holding.quantity <= 0) return;
+      player.cash += holding.quantity * stock.price;
+      delete player.portfolio[symbol];
+      await saveGame(gameState);
+      updateUI(gameState);
+    };
+  });
+}
 
-    for (let i = 0; i < owned; i++) {
-      sellStock(player, symbol, stock.price);
-    }
-    await saveGame(gameState);
-    updateUI(gameState);
-  };
-});
-
-
-  // Jobs tab
+function renderJobs(player) {
   const jobsEl = document.getElementById("jobs");
-  const available = getAvailableJobs(player);
+  const jobs = getAvailableJobs(player);
   jobsEl.innerHTML = `<h3>Available Jobs</h3>`;
-  if (available.length === 0) {
+  if (jobs.length === 0) {
     jobsEl.innerHTML += `<p>No jobs available yet. Build your reputation!</p>`;
   } else {
-    available.forEach(job => {
+    jobs.forEach(job => {
       jobsEl.innerHTML += `
-        <div>
+        <div class="job">
           <strong>${job.title}</strong> – $${job.income}/day
           <button data-job="${job.title}">Apply</button>
         </div>
       `;
     });
-
     document.querySelectorAll("[data-job]").forEach(btn => {
       btn.onclick = async () => {
-        const jobTitle = btn.getAttribute("data-job");
-        player.job = jobTitle;
-        await saveGame(gameState);
-        updateUI(gameState);
-        alert(`Congrats! You are now a ${jobTitle}.`);
+        if (!useAction(player)) return;
+        const job = jobs.find(j => j.title === btn.getAttribute("data-job"));
+        player.job = job.title;
+        player.reputation = Math.min(100, player.reputation + Math.floor(job.income / 10));
+        await saveGame(stateRef);
+        updateUI(stateRef);
+        alert(`Congrats! You are now a ${job.title}.`);
+      };
+    });
+  }
+}
+
+function renderMore(player, gameState) {
+  const moreEl = document.getElementById("more");
+  moreEl.innerHTML = `<h3>🏠 Housing Upgrades</h3>`;
+  const housingChoices = getAvailableHousing(player);
+  if (housingChoices.length === 0) {
+    moreEl.innerHTML += `<p>No housing upgrades available yet.</p>`;
+  } else {
+    housingChoices.forEach(option => {
+      moreEl.innerHTML += `
+        <div class="housing">
+          <strong>${option.name}</strong> – $${option.cost}<br/>
+          <em>${option.description}</em><br/>
+          <button data-housing="${option.name}">Move In</button>
+        </div>
+      `;
+    });
+    document.querySelectorAll("[data-housing]").forEach(btn => {
+      btn.onclick = async () => {
+        if (!useAction(player)) return;
+        const home = housingOptions.find(h => h.name === btn.getAttribute("data-housing"));
+        if (player.cash >= home.cost) {
+          player.cash -= home.cost;
+          player.housing = home.name;
+          player.reputation = Math.min(100, player.reputation + (home.name === "Apartment" ? 5 : 15));
+          await saveGame(gameState);
+          updateUI(gameState);
+          alert(`You moved into a ${home.name}!`);
+        }
       };
     });
   }
 
-  // More tab (placeholder)
-
-
-// ...
-// More tab (Housing + Clients)
-const moreEl = document.getElementById("more");
-
-// 🏠 Housing
-moreEl.innerHTML = `<h3>🏠 Housing Upgrades</h3>`;
-const housingChoices = getAvailableHousing(player);
-
-if (housingChoices.length === 0) {
-  moreEl.innerHTML += `<p>No housing upgrades available yet.</p>`;
-} else {
-  housingChoices.forEach(option => {
-    moreEl.innerHTML += `
-      <div>
-        <strong>${option.name}</strong> – $${option.cost}
-        <br />
-        <em>${option.description}</em>
-        <br />
-        <button data-housing="${option.name}">Move In</button>
-      </div>
-    `;
-  });
-
-  document.querySelectorAll("[data-housing]").forEach(btn => {
-    btn.onclick = async () => {
-      const choice = btn.getAttribute("data-housing");
-      const selected = housingOptions.find(h => h.name === choice);
-      if (player.cash >= selected.cost) {
-        player.cash -= selected.cost;
-        player.housing = selected.name;
-        await saveGame(gameState);
-        updateUI(gameState);
-        alert(`You moved into a ${selected.name}!`);
-      }
-    };
-  });
-}
-
-// 👥 Clients
-moreEl.innerHTML += `<hr/><h3>👥 Potential Clients</h3>`;
-const clients = getClientList(player);
-console.log("🧠 Clients being rendered:", clients);
-
-let clientsHTML = `<hr/><h3>👥 Potential Clients</h3>`;
-clients.forEach(client => {
-  clientsHTML += `
-    <div>
-      <strong>${client.name}</strong> – Trust: ${client.trust} / 100
-      ${client.invested > 0 ? `<br/>Invested: $${client.invested}` : ""}
-      <br />
-      <button data-client="${client.name}">Talk</button>
-    </div>
+  moreEl.innerHTML += `
+    <hr/><h3>👥 Clients</h3>
+    <button id="discoverBtn">🔍 Find Clients</button>
+    <div id="clientList"></div>
   `;
-});
-moreEl.innerHTML += clientsHTML;
 
-// NOW attach listeners
-setTimeout(() => {
-  document.querySelectorAll("[data-client]").forEach(btn => {
-    btn.onclick = async () => {
-      const name = btn.getAttribute("data-client");
-      console.log("👤 Talking to client:", name);
+  document.getElementById("discoverBtn").onclick = async () => {
+    const msg = discoverClient(player);
+    await saveGame(gameState);
+    updateUI(gameState);
+    alert(msg);
+  };
 
-      const msg = increaseTrust(player, name);
-      console.log("🗨️ Message from trust function:", msg);
+  const clients = getClientList(player).filter(c => c.discovered);
+  const list = document.getElementById("clientList");
+  list.innerHTML = clients.map(client => `
+    <div class="client">
+      <strong>${client.name}</strong> – Trust: ${client.trust} / 100<br/>
+      ${client.invested ? `Invested: $${client.invested}<br/>` : ""}
+      <details>
+        <summary>Details</summary>
+        Wealth: $${client.wealth}<br/>
+        Risk: ${client.riskTolerance}<br/>
+        Patience: ${client.patience} days<br/>
+        Required Rep: ${client.reputationNeeded}, License: ${client.licenseNeeded || "None"}<br/>
+        <button data-talk="${client.name}">Talk</button>
+        <button data-pitch="${client.name}">Pitch</button>
+        <button data-review="${client.name}">Review</button>
+        <button data-gift="${client.name}">Gift</button>
+      </details>
+    </div>
+  `).join("");
 
-      await saveGame(gameState);
-      updateUI(gameState);
-      alert(msg);
-    };
-  });
-}, 0);
-
-
-// 📃 Licenses
-moreEl.innerHTML += `<hr/><h3>📃 Available Licenses</h3>`;
-const availableLicenses = getAvailableLicenses(player);
-
-if (availableLicenses.length === 0) {
-  moreEl.innerHTML += `<p>No licenses available right now. Earn more reputation or cash!</p>`;
-} else {
-  availableLicenses.forEach(lic => {
-    moreEl.innerHTML += `
-      <div>
-        <strong>${lic.name}</strong> – $${lic.cost}
-        <br />
-        <em>${lic.description}</em>
-        <br />
-        <button data-license="${lic.name}">Get License</button>
-      </div>
-    `;
-  });
-
-  document.querySelectorAll("[data-license]").forEach(btn => {
-    btn.onclick = async () => {
-      const name = btn.getAttribute("data-license");
-      const lic = licenses.find(l => l.name === name);
-      if (lic && player.cash >= lic.cost) {
-        player.cash -= lic.cost;
-        player.licenses.push(lic.name);
-        await saveGame(gameState);
-        updateUI(gameState);
-        alert(`You earned the ${lic.name} license!`);
-      }
-    };
-  });
+  attachClientActions(player, gameState);
 }
 
-
-
-// Placeholder
-moreEl.innerHTML += `
-  <hr />
-  <h3>Coming Soon</h3>
-  <ul>
-    <li>📃 License exams</li>
-    <li>🏦 Hedge fund / bank system</li>
-  </ul>
-`;
-
+function attachClientActions(player, gameState) {
+  ["talk", "pitch", "review", "gift"].forEach(type => {
+    document.querySelectorAll(`[data-${type}]`).forEach(btn => {
+      btn.onclick = async () => {
+        if (!useAction(player)) return;
+        const name = btn.getAttribute(`data-${type}`);
+        const result = {
+          talk: talkClient,
+          pitch: pitchClient,
+          review: reviewClient,
+          gift: giftClient
+        }[type](player, name);
+        await saveGame(gameState);
+        updateUI(gameState);
+        alert(result);
+      };
+    });
+  });
 }
 
 function updateChart(gameState) {
-if (!selectedStock.value) {
-  renderStockChart([], "");
-  return;
-}
-const filteredData = gameState.stockHistory.map(day => ({
-  day: day.day,
-  [selectedStock.value]: day[selectedStock.value]
-}));
-renderStockChart(filteredData, selectedStock.value);
+  if (!selectedStock.value) {
+    renderStockChart([], "");
+    return;
+  }
+  const data = gameState.stockHistory.map(day => ({
+    day: day.day,
+    [selectedStock.value]: day[selectedStock.value]
+  }));
+  renderStockChart(data, selectedStock.value);
 }
 
+function useAction(player) {
+  if (player.actionsLeft <= 0) {
+    alert("You've used all 3 actions for today. Click Next Day to continue.");
+    return false;
+  }
+  player.actionsLeft--;
+  return true;
+}

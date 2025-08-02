@@ -40,24 +40,28 @@ async function startGame() {
   updateUI(gameState);
 }
 
+import { updateClientsDaily } from "./clientSystem.js";
+
 export async function nextDay() {
   gameState.day += 1;
-
+  gameState.player.actionsLeft = 3;
   gameState.player.cash += getDailyIncome(gameState.player);
   updateMarket(gameState.stocks);
 
-  if (!gameState.stockHistory) gameState.stockHistory = [];
+  // ✅ Update clients daily (trust decay, patience check)
+  updateClientsDaily(gameState.player);
 
+  if (!gameState.stockHistory) gameState.stockHistory = [];
   const historyEntry = { day: gameState.day };
   gameState.stocks.forEach(stock => {
     historyEntry[stock.symbol] = stock.price;
   });
-
   gameState.stockHistory.push(historyEntry);
   if (gameState.stockHistory.length > 30) gameState.stockHistory.shift();
 
   await saveGame(gameState);
   updateUI(gameState);
 }
+
 
 startGame();

@@ -22,7 +22,9 @@ if (data && data.player && data.player.portfolio) {
     clients: 0,
     licenses: [],
     mood: 70,
+    actionsLeft: 3,
     portfolio: {},
     clientsData: [] // <-- ensure it exists
+    
   };
 }

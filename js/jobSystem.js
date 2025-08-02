@@ -1,49 +1,72 @@
 export const jobList = [
   {
     title: "Unemployed",
+    income: 0,
+    requirements: []
+  },
+  {
+    title: "Gig Worker",
+    income: 12,
+    requirements: []
+  },
+
+  {
+    title: "Barista",
     income: 20,
     requirements: []
   },
   {
-    title: "Freelancer",
-    income: 50,
+    title: "Retail Assistant",
+    income: 25,
     requirements: []
   },
   {
-    title: "Barista",
-    income: 60,
-    requirements: [{ type: "reputation", value: 5 }]
+    title: "Intern - Brokerage",
+    income: 35,
+    requirements: []
   },
   {
     title: "Junior Trader",
-    income: 120,
-    requirements: [{ type: "reputation", value: 15 }]
+    income: 45,
+    requirements: []
   },
   {
-    title: "Financial Advisor",
-    income: 200,
+    title: "Financial Analyst",
+    income: 75,
+    requirements: []
+  },
+  {
+    title: "Investment Advisor",
+    income: 110,
+    requirements: [{ type: "license", value: "Series 7" }]
+  },
+  {
+    title: "Wealth Manager",
+    income: 250,
     requirements: [{ type: "license", value: "Series 7" }]
   },
   {
     title: "Fund Manager",
     income: 400,
     requirements: [{ type: "clients", value: 5 }]
+  },
+  {
+    title: "Hedge Fund Partner",
+    income: 700,
+    requirements: [{ type: "clients", value: 10 }]
   }
 ];
 
 export function getDailyIncome(player) {
   const job = jobList.find(j => j.title === player.job);
-  return job ? job.income : 20;
+  return job ? job.income : 0;
 }
 
 export function getAvailableJobs(player) {
   return jobList.filter(job => {
-    // Don't include current job
     if (job.title === player.job) return false;
 
-    // Check if player meets all requirements
     return job.requirements.every(req => {
-      if (req.type === "reputation") return player.reputation >= req.value;
       if (req.type === "license") return player.licenses.includes(req.value);
       if (req.type === "clients") return player.clients >= req.value;
       return false;
