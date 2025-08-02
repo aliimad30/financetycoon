@@ -2,16 +2,13 @@ import { loadGame } from "./firestore.js";
 
 export async function initPlayer() {
   const data = await loadGame();
-if (data && data.player && data.player.portfolio) {
-  for (const [symbol, val] of Object.entries(data.player.portfolio)) {
-    if (typeof val === "number") {
-      data.player.portfolio[symbol] = { quantity: val, totalCost: val * 0 };
-    }
+
+  // ✅ If saved game exists, return it fully
+  if (data && data.player) {
+    return data.player;
   }
-}
 
-
-  // New player
+  // ✅ New player
   return {
     name: "You",
     cash: 500,
@@ -20,19 +17,22 @@ if (data && data.player && data.player.portfolio) {
     housing: "Car",
     reputation: 0,
     clients: 0,
+    loan: {
+  balance: 0,
+  dailyInterest: 0
+},
+
     licenses: [],
     mood: 70,
     actionsLeft: 3,
     portfolio: {},
     personal: {
-  diet: "Budget Diet",
-  insurance: "None",
-  gym: "None",
-  hobby: "None",
-  health: 70
-},
-
-    clientsData: [] // <-- ensure it exists
-    
+      diet: "Budget Diet",
+      insurance: "None",
+      gym: "None",
+      hobby: "None",
+      health: 70
+    },
+    clientsData: []
   };
 }

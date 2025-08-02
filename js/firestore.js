@@ -43,3 +43,9 @@ export async function loadGame() {
   const snapshot = await getDoc(gameRef);
   return snapshot.exists() ? snapshot.data() : null;
 }
+
+export async function resetGame() {
+  await waitForFirebase();
+  const gameRef = doc(collection(db, "games"), uid);
+  await setDoc(gameRef, {}); // clears save
+}

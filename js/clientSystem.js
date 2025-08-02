@@ -133,15 +133,23 @@ export function tryInvest(player, name) {
 export function updateClientsDaily(player) {
   if (!player.clientsData) return;
 
+  const remainingClients = [];
+
   player.clientsData.forEach(client => {
     client.lastInteraction++;
+
+    // Client leaves if ignored too long AND trust < 40
     if (client.lastInteraction >= client.patience && client.trust < 40) {
-      // Client leaves
-      player.clientsData = player.clientsData.filter(c => c.name !== client.name);
       player.clients = Math.max(0, player.clients - 1);
+      // ✅ We simply skip adding them to the new list
+    } else {
+      remainingClients.push(client);
     }
   });
+
+  player.clientsData = remainingClients;
 }
+
 
 // --- Get client list ---
 export function getClientList(player) {

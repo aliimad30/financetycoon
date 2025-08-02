@@ -15,6 +15,7 @@ import { getAvailableLicenses, licenses } from "./licenseSystem.js";
 import { renderStockChart } from "./chartSystem.js";
 import { getPersonalChoices, initPersonalData } from "./personalSystem.js";
 import { applyDailyPersonalEffects } from "./personalSystem.js";
+import { getLoanOptions, takeLoan, repayLoan } from "./loanSystem.js";
 
 
 
@@ -42,11 +43,11 @@ export function initUI(gameState) {
 
   // Tab switching
   document.querySelectorAll("#tabs button").forEach(btn => {
-    btn.addEventListener("click", () => {
+    btn.onclick = () => {
       const tab = btn.getAttribute("data-tab");
       document.querySelectorAll(".tab").forEach(sec => sec.classList.remove("active"));
       document.getElementById(tab).classList.add("active");
-    });
+    };
   });
 
   // Default to dashboard
@@ -57,45 +58,64 @@ export function initUI(gameState) {
   dash.innerHTML = `
     <div id="status"></div>
     <button id="nextDayBtn">Next Day</button>
+    <button id="resetBtn" style="background:red;">Reset Game</button>
   `;
-  document.getElementById("nextDayBtn").addEventListener("click", () => nextDay());
+
+  // ✅ Avoid duplicate listeners
+  document.getElementById("nextDayBtn").onclick = () => nextDay();
+  document.getElementById("resetBtn").onclick = async () => {
+    if (confirm("Are you sure you want to reset all progress?")) {
+      const { resetGame } = await import("./firestore.js");
+      await resetGame();
+      location.reload();
+    }
+  };
 
   updateUI(gameState);
 }
 
+
 export function updateUI(gameState) {
   const { player, stocks, day } = gameState;
-
+  if (!player.personal) {
+    initPersonalData(player);
+  }
   // Status
-// Conditional colors
-const healthColor = player.personal?.health >= 70 ? 'lightgreen' : (player.personal?.health >= 40 ? 'orange' : 'red');
-const moodColor = player.mood >= 70 ? 'lightgreen' : (player.mood >= 40 ? 'orange' : 'red');
-const cashColor = player.cash >= 1000 ? 'lightgreen' : (player.cash >= 200 ? 'orange' : 'red');
-const repColor = player.reputation >= 50 ? 'lightgreen' : 'orange';
+  // Conditional colors
+  const healthColor = player.personal?.health >= 70 ? 'lightgreen' : (player.personal?.health >= 40 ? 'orange' : 'red');
+  const moodColor = player.mood >= 70 ? 'lightgreen' : (player.mood >= 40 ? 'orange' : 'red');
+  const cashColor = player.cash >= 1000 ? 'lightgreen' : (player.cash >= 200 ? 'orange' : 'red');
+  const repColor = player.reputation >= 50 ? 'lightgreen' : 'orange';
 
-document.getElementById("status").innerHTML = `
-  <div class="dashboard-card">
-    <h2>📅 Day ${day}</h2>
-    <div class="dash-row"><strong>Job:</strong> ${player.job}</div>
-    <div class="dash-row"><strong>Housing:</strong> ${player.housing}</div>
-    <div class="dash-row"><strong>Clients:</strong> ${player.clients}</div>
-    <div class="dash-row"><strong>Licenses:</strong> ${player.licenses.join(", ") || "None"}</div>
-  </div>
+  // ✅ Calculate medical event chance dynamically
+  const currentInsurance = player.personal?.insurance || "None";
+  const insurance = getPersonalChoices().insuranceOptions.find(i => i.name === currentInsurance);
+  const health = player.personal?.health ?? 70;
+  const riskChance = insurance ? (insurance.healthRisk * ((100 - health) / 100)).toFixed(1) : 0;
 
-  <div class="dashboard-card">
-    <h3>💰 Finances</h3>
-    <div class="dash-row" style="color:${cashColor}"><strong>Cash:</strong> $${player.cash.toFixed(2)}</div>
-    <div class="dash-row"><strong>Daily Expenses:</strong> $${calculateDailyExpenses(player)}</div>
-    <div class="dash-row" style="color:${repColor}"><strong>Reputation:</strong> ${player.reputation}</div>
-  </div>
+  document.getElementById("status").innerHTML = `
+    <div class="dashboard-card">
+      <h2>📅 Day ${day}</h2>
+      <div class="dash-row"><strong>Job:</strong> ${player.job}</div>
+      <div class="dash-row"><strong>Housing:</strong> ${player.housing}</div>
+      <div class="dash-row"><strong>Clients:</strong> ${player.clients}</div>
+      <div class="dash-row"><strong>Licenses:</strong> ${player.licenses.join(", ") || "None"}</div>
+    </div>
 
-  <div class="dashboard-card">
-    <h3>❤️ Well-being</h3>
-    <div class="dash-row" style="color:${healthColor}"><strong>Health:</strong> ${player.personal?.health ?? 70}</div>
-    <div class="dash-row" style="color:${moodColor}"><strong>Mood:</strong> ${player.mood ?? 70}</div>
-  </div>
-`;
+    <div class="dashboard-card">
+      <h3>💰 Finances</h3>
+      <div class="dash-row" style="color:${cashColor}"><strong>Cash:</strong> $${player.cash.toFixed(2)}</div>
+      <div class="dash-row"><strong>Daily Expenses:</strong> $${calculateDailyExpenses(player)}</div>
+      <div class="dash-row" style="color:${repColor}"><strong>Reputation:</strong> ${player.reputation}</div>
+    </div>
 
+    <div class="dashboard-card">
+      <h3>❤️ Well-being</h3>
+      <div class="dash-row" style="color:${healthColor}"><strong>Health:</strong> ${player.personal?.health ?? 70}</div>
+      <div class="dash-row" style="color:${moodColor}"><strong>Mood:</strong> ${player.mood ?? 70}</div>
+      <div class="dash-row"><strong>Medical Event Chance:</strong> ${riskChance}%</div>
+    </div>
+  `;
 
   // Stock Market
   updateChart(gameState);
@@ -149,23 +169,23 @@ document.getElementById("status").innerHTML = `
   renderJobs(player);
   renderMore(player, gameState);
 
-if (document.getElementById("personal")) {
-  if (!player.personal) {
-    initPersonalData(player);
+  if (document.getElementById("personal")) {
+    if (!player.personal) {
+      initPersonalData(player);
+    }
+    renderPersonalTab(player, gameState);
   }
-  renderPersonalTab(player, gameState);
-}
 
   // Restore expanded card after UI refresh
-if (expandedCard) {
-  const expanded = document.getElementById(`actions-${expandedCard}`);
-  if (expanded) {
-    expanded.classList.remove("hidden");
-    document.querySelector(`[data-symbol="${expandedCard}"]`)?.classList.add("selected-stock");
+  if (expandedCard) {
+    const expanded = document.getElementById(`actions-${expandedCard}`);
+    if (expanded) {
+      expanded.classList.remove("hidden");
+      document.querySelector(`[data-symbol="${expandedCard}"]`)?.classList.add("selected-stock");
+    }
   }
 }
 
-}
 
 function attachTradeListeners(player, stocks, gameState) {
   document.querySelectorAll("[data-buy]").forEach(btn => {
@@ -188,7 +208,8 @@ function attachTradeListeners(player, stocks, gameState) {
       const symbol = btn.getAttribute("data-sell");
       const stock = stocks.find(s => s.symbol === symbol);
       const qty = parseInt(document.querySelector(`[data-qty="${symbol}"]`).value) || 1;
-      for (let i = 0; i < qty; i++) if (!sellStock(player, symbol, stock.price)) return;
+      if (!sellStock(player, symbol, stock.price, qty)) return;
+
       await saveGame(gameState);
       updateUI(gameState);
     };
@@ -218,14 +239,17 @@ function renderJobs(player) {
   if (jobs.length === 0) {
     jobsEl.innerHTML += `<p>No jobs available yet. Build your reputation!</p>`;
   } else {
-    jobs.forEach(job => {
-      jobsEl.innerHTML += `
-        <div class="job">
-          <strong>${job.title}</strong> – $${job.income}/day
-          <button data-job="${job.title}">Apply</button>
-        </div>
-      `;
-    });
+jobs.forEach(job => {
+  const repBoost = Math.floor(job.income / 10);
+  jobsEl.innerHTML += `
+    <div class="job">
+      <strong>${job.title}</strong> – $${job.income}/day
+      <span style="color:lightblue;">(Reputation +${repBoost})</span>
+      <button data-job="${job.title}">Apply</button>
+    </div>
+  `;
+});
+
     document.querySelectorAll("[data-job]").forEach(btn => {
       btn.onclick = async () => {
         if (!useAction(player)) return;
@@ -241,6 +265,10 @@ function renderJobs(player) {
 }
 
 function renderMore(player, gameState) {
+
+      if (!player.loan) {
+    player.loan = { balance: 0, dailyInterest: 0 };
+  }
   const moreEl = document.getElementById("more");
   moreEl.innerHTML = `<h3>🏠 Housing Options</h3>`;
   
@@ -249,69 +277,104 @@ function renderMore(player, gameState) {
   if (housingChoices.length === 0) {
     moreEl.innerHTML += `<p>No housing options available.</p>`;
   } else {
-    housingChoices.forEach(option => {
-      moreEl.innerHTML += `
-        <div class="housing">
-          <strong>${option.name}</strong> – $${option.cost}<br/>
-          <em>${option.description}</em><br/>
-          <span style="color:${player.reputation >= option.minReputation ? 'lightgreen' : 'red'}">
-            Required Reputation: ${option.minReputation}
-          </span><br/>
-          <button data-housing="${option.name}">Move In</button>
-        </div>
-      `;
-    });
+housingChoices.forEach(option => {
+  moreEl.innerHTML += `
+    <div class="housing">
+      <strong>${option.name}</strong> – $${option.cost}<br/>
+      <em>${option.description}</em><br/>
+      <span style="color:lightgreen;">Effect: Reputation +${option.repBoost}</span><br/>
+      <span style="color:${player.reputation >= option.minReputation ? 'lightgreen' : 'red'}">
+        Required Reputation: ${option.minReputation}
+      </span><br/>
+      <button data-housing="${option.name}">Move In</button>
+    </div>
+  `;
+});
+
 
     document.querySelectorAll("[data-housing]").forEach(btn => {
-      btn.onclick = async () => {
-        if (!useAction(player)) return;
-        const homeName = btn.getAttribute("data-housing");
-        const home = housingOptions.find(h => h.name === homeName);
-        const current = housingOptions.find(h => h.name === player.housing);
+  btn.onclick = async () => {
+    if (!useAction(player)) return;
+    const homeName = btn.getAttribute("data-housing");
+    const home = housingOptions.find(h => h.name === homeName);
+    const current = housingOptions.find(h => h.name === player.housing);
 
-        // Determine rep change
-        let repChange = 0;
+    let repChange = 0;
 
-        // --- Upgrade ---
-        if (home.cost > current.cost) {
-          if (player.reputation < home.minReputation) {
-            alert(`You need at least ${home.minReputation} reputation to move in here.`);
-            return;
-          }
-          if (player.cash < home.cost) {
-            alert("Not enough cash to upgrade.");
-            return;
-          }
-          if (home.name === "Apartment") repChange = 5;
-          if (home.name === "House") repChange = 10;
-          if (home.name === "Mansion") repChange = 15;
-        }
+    // --- Upgrade ---
+    if (home.cost > current.cost) {
+      if (player.reputation < home.minReputation) {
+        alert(`You need at least ${home.minReputation} reputation to move in here.`);
+        return;
+      }
+      if (player.cash < home.cost) {
+        alert("Not enough cash to upgrade.");
+        return;
+      }
+      // ✅ Automatically use defined boost
+      repChange = home.repBoost;
+    }
 
-        // --- Downgrade ---
-        else if (home.cost < current.cost) {
-          if (player.cash < home.cost) {
-            alert("Not enough cash to downgrade.");
-            return;
-          }
-          if (home.name === "Car" && current.name === "Apartment") repChange = -20;
-          if (home.name === "Car" && current.name === "House") repChange = -30;
-          if (home.name === "Car" && current.name === "Mansion") repChange = -50;
-          if (home.name === "Apartment" && current.name === "House") repChange = -20;
-          if (home.name === "Apartment" && current.name === "Mansion") repChange = -40;
-          if (home.name === "House" && current.name === "Mansion") repChange = -30;
-        }
+    // --- Downgrade ---
+    else if (home.cost < current.cost) {
+      if (player.cash < home.cost) {
+        alert("Not enough cash to downgrade.");
+        return;
+      }
+      if (home.name === "Car" && current.name === "Apartment") repChange = -20;
+      if (home.name === "Car" && current.name === "House") repChange = -30;
+      if (home.name === "Car" && current.name === "Mansion") repChange = -50;
+      if (home.name === "Apartment" && current.name === "House") repChange = -20;
+      if (home.name === "Apartment" && current.name === "Mansion") repChange = -40;
+      if (home.name === "House" && current.name === "Mansion") repChange = -30;
+    }
 
-        // Apply changes
-        player.cash -= home.cost;
-        player.housing = home.name;
-        player.reputation = Math.max(0, Math.min(100, player.reputation + repChange));
+    // Apply changes
+    player.cash -= home.cost;
+    player.housing = home.name;
+    player.reputation = Math.max(0, Math.min(100, player.reputation + repChange));
 
-        await saveGame(gameState);
-        updateUI(gameState);
-        alert(`You moved into a ${home.name}! Reputation ${repChange >= 0 ? '+' : ''}${repChange}`);
-      };
-    });
+    await saveGame(gameState);
+    updateUI(gameState);
+    alert(`You moved into a ${home.name}! Reputation ${repChange >= 0 ? '+' : ''}${repChange}`);
+  };
+ });
+
   }
+// === Loans Section ===
+
+
+const options = getLoanOptions(player);
+
+moreEl.innerHTML += `
+  <hr/><h3>🏦 Bank Loans</h3>
+  <div>
+    <p>Current Debt: $${player.loan.balance}</p>
+    ${options.map((opt, i) => `
+      <button data-loan="${i}">Borrow $${opt.amount} (${opt.interest.toFixed(1)}% daily)</button>
+    `).join("<br/>")}
+    <br/><input type="number" id="loanRepay" placeholder="Amount to repay" style="width:120px;">
+    <button id="repayLoanBtn">Repay Loan</button>
+  </div>
+`;
+
+document.querySelectorAll("[data-loan]").forEach(btn => {
+  btn.onclick = async () => {
+    const idx = parseInt(btn.getAttribute("data-loan"));
+    const { amount, interest } = options[idx];
+    alert(takeLoan(player, amount, interest));
+    await saveGame(gameState);
+    updateUI(gameState);
+  };
+});
+
+document.getElementById("repayLoanBtn").onclick = async () => {
+  const amt = parseInt(document.getElementById("loanRepay").value);
+  alert(repayLoan(player, amt));
+  await saveGame(gameState);
+  updateUI(gameState);
+};
+
 
   // === Clients Section ===
   moreEl.innerHTML += `
@@ -359,18 +422,25 @@ function renderMore(player, gameState) {
   if (licenseChoices.length === 0) {
     licenseList.innerHTML = "<p>No licenses available yet.</p>";
   } else {
-    licenseChoices.forEach(lic => {
-      licenseList.innerHTML += `
-        <div class="license">
-          <strong>${lic.name}</strong> – $${lic.cost}<br/>
-          <em>${lic.description}</em><br/>
-          <span style="color:${player.reputation >= lic.minReputation ? 'lightgreen' : 'red'}">
-            Required Reputation: ${lic.minReputation}
-          </span><br/>
-          <button data-license="${lic.name}">Purchase</button>
-        </div>
-      `;
-    });
+licenseChoices.forEach(lic => {
+  const repBoost =
+    lic.name === "Series 7" ? 10 :
+    lic.name === "RIA Certification" ? 20 :
+    lic.name === "Hedge Fund Manager Permit" ? 10 : 0;
+
+  licenseList.innerHTML += `
+    <div class="license">
+      <strong>${lic.name}</strong> – $${lic.cost}<br/>
+      <em>${lic.description}</em><br/>
+      <span style="color:lightgreen;">Effect: Reputation +${repBoost}</span><br/>
+      <span style="color:${player.reputation >= lic.minReputation ? 'lightgreen' : 'red'}">
+        Required Reputation: ${lic.minReputation}
+      </span><br/>
+      <button data-license="${lic.name}">Purchase</button>
+    </div>
+  `;
+});
+
 
     document.querySelectorAll("[data-license]").forEach(btn => {
       btn.onclick = async () => {
@@ -424,17 +494,22 @@ function renderPersonalTab(player, gameState) {
   `;
 
   // Helper to create choice buttons
-  function renderChoices(title, list, current, type) {
-    let html = `<h4>${title}</h4>`;
-    list.forEach(opt => {
-      html += `
-        <button data-choice="${type}" data-value="${opt.name}" ${opt.name === current ? "style='background:green;'" : ""}>
-          ${opt.name} ($${opt.cost}/day)
-        </button><br/>
-      `;
-    });
-    return html;
-  }
+function renderChoices(title, list, current, type) {
+  let html = `<h4>${title}</h4>`;
+  list.forEach(opt => {
+    const effects = [];
+    if (opt.healthEffect) effects.push(`Health ${opt.healthEffect>0?'+':''}${opt.healthEffect}`);
+    if (opt.moodEffect) effects.push(`Mood ${opt.moodEffect>0?'+':''}${opt.moodEffect}`);
+    if (opt.repEffect) effects.push(`Reputation ${opt.repEffect>0?'+':''}${opt.repEffect}`);
+    html += `
+      <button data-choice="${type}" data-value="${opt.name}" ${opt.name === current ? "style='background:green;'" : ""}>
+        ${opt.name} ($${opt.cost}/day)
+      </button> <span style="color:lightblue;">(${effects.join(', ')})</span><br/>
+    `;
+  });
+  return html;
+}
+
 
   personalEl.innerHTML += renderChoices("Diet", dietOptions, player.personal?.diet ?? "Budget Diet", "diet");
   personalEl.innerHTML += renderChoices("Health Insurance", insuranceOptions, player.personal.insurance, "insurance");

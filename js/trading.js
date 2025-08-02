@@ -14,22 +14,30 @@ export function buyStock(player, symbol, price) {
   return true;
 }
 
-export function sellStock(player, symbol, price) {
+export function sellStock(player, symbol, price, qty = 1) {
   const stock = player.portfolio[symbol];
   if (!stock || stock.quantity <= 0) {
     alert("You don’t own this stock.");
     return false;
   }
 
-  stock.quantity -= 1;
-  player.cash += price;
+  if (qty > stock.quantity) {
+    alert("Not enough shares to sell.");
+    return false;
+  }
 
-  // Reduce cost basis proportionally
-  const avgCost = stock.totalCost / (stock.quantity + 1);
-  stock.totalCost -= avgCost;
+  const avgCostPerShare = stock.totalCost / stock.quantity;
+  const totalSellAmount = qty * price;
 
+  // Reduce holding
+  stock.quantity -= qty;
+  stock.totalCost -= avgCostPerShare * qty;
+  player.cash += totalSellAmount;
+
+  // Clean up empty positions
   if (stock.quantity === 0) {
     delete player.portfolio[symbol];
   }
   return true;
 }
+

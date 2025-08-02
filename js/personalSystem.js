@@ -9,11 +9,11 @@ export const dietOptions = [
   { name: "Luxury Diet", cost: 40, healthEffect: +2, moodEffect: +2, repEffect: +1 }
 ];
 
-// --- Health insurance options ---
+// --- Health insurance options (halved risks) ---
 export const insuranceOptions = [
-  { name: "None", cost: 0, healthRisk: 10, moodEffect: -1 }, // 10% chance hospital bill
-  { name: "Basic Insurance", cost: 10, healthRisk: 5, moodEffect: 0 },
-  { name: "Premium Insurance", cost: 25, healthRisk: 1, moodEffect: +1 }
+  { name: "None", cost: 0, healthRisk: 5, moodEffect: -1 },
+  { name: "Basic Insurance", cost: 10, healthRisk: 2.5, moodEffect: 0 },
+  { name: "Premium Insurance", cost: 25, healthRisk: 0.5, moodEffect: +1 }
 ];
 
 // --- Gym memberships ---
@@ -69,12 +69,21 @@ export function applyDailyPersonalEffects(player) {
   const insurance = findOption(insuranceOptions, player.personal.insurance);
   totalCost += insurance.cost;
   totalMoodChange += insurance.moodEffect;
-  // Random medical bill if uninsured or basic
-  if (Math.random() * 100 < insurance.healthRisk) {
+
+  // ✅ Dynamic medical risk based on health
+  const health = player.personal.health ?? 70;
+  const adjustedRisk = insurance.healthRisk * ((100 - health) / 100);
+
+  if (Math.random() * 100 < adjustedRisk) {
     const bill = Math.floor(Math.random() * 200) + 100;
     totalCost += bill;
     totalMoodChange -= 3;
     totalHealthChange -= 5;
+
+    // ✅ Notify player of the event
+    if (typeof window !== "undefined") {
+      alert(`🚑 Unexpected medical expense! You were billed $${bill} due to health issues.`);
+    }
   }
 
   // Gym

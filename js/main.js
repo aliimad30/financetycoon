@@ -2,9 +2,10 @@ import { initPlayer } from "./player.js";
 import { initUI, updateUI, selectedStock as uiSelectedStock } from "./ui.js";
 import { getStocks, updateMarket } from "./stockMarket.js";
 import { getDailyIncome } from "./jobSystem.js";
-import { saveGame } from "./firestore.js";
+import { saveGame, loadGame } from "./firestore.js";
 import { applyDailyPersonalEffects } from "./personalSystem.js";
-
+import { applyDailyLoanInterest } from "./loanSystem.js";
+import { updateClientsDaily } from "./clientSystem.js";
 
 let gameState = {
   day: 1,
@@ -13,36 +14,60 @@ let gameState = {
 };
 
 async function startGame() {
-  gameState.player = await initPlayer();
-  gameState.stocks = getStocks();
+  const savedGame = await loadGame();
 
-  // Generate 30 days of fake data
-  const history = [];
-  for (let day = 1; day <= 30; day++) {
-    const entry = { day };
-    gameState.stocks.forEach(stock => {
-      let lastPrice = history.length > 0 ? history[history.length-1][stock.symbol] : stock.price;
-      let volatility = 0.05 + Math.random() * 0.07;
-      let direction = (Math.random() - 0.5) * 2;
-      let change = lastPrice * volatility * direction;
-      entry[stock.symbol] = Math.max(1, Math.round(lastPrice + change));
-    });
-    history.push(entry);
+  // Get a default player structure for merging
+  const defaultPlayer = await initPlayer();
+
+  if (savedGame && savedGame.player) {
+    // Merge default properties with saved player to avoid undefined fields
+    gameState = {
+      day: savedGame.day || 1,
+      player: {
+        ...defaultPlayer,
+        ...savedGame.player,
+        personal: {
+          ...defaultPlayer.personal,
+          ...(savedGame.player.personal || {})
+        },
+        loan: {
+          balance: savedGame.player.loan?.balance ?? 0,
+          dailyInterest: savedGame.player.loan?.dailyInterest ?? 0
+        }
+      },
+      stocks: savedGame.stocks || getStocks(),
+      stockHistory: savedGame.stockHistory || []
+    };
+  } else {
+    gameState.player = defaultPlayer;
+    gameState.stocks = getStocks();
+    gameState.day = 1;
+    gameState.stockHistory = [];
+
+    // Generate 30 days of fake data
+    for (let day = 1; day <= 30; day++) {
+      const entry = { day };
+      gameState.stocks.forEach(stock => {
+        let lastPrice = gameState.stockHistory.length > 0
+          ? gameState.stockHistory[gameState.stockHistory.length - 1][stock.symbol]
+          : stock.price;
+        let volatility = 0.05 + Math.random() * 0.07;
+        let direction = (Math.random() - 0.5) * 2;
+        let change = lastPrice * volatility * direction;
+        entry[stock.symbol] = Math.max(1, Math.round(lastPrice + change));
+      });
+      gameState.stockHistory.push(entry);
+    }
   }
-  gameState.stockHistory = history;
 
   // Select a random stock first
   const symbols = gameState.stocks.map(s => s.symbol);
   const defaultStock = symbols[Math.floor(Math.random() * symbols.length)];
-
-  // ✅ Set the shared object reference
   uiSelectedStock.value = defaultStock;
 
   initUI(gameState);
   updateUI(gameState);
 }
-
-import { updateClientsDaily } from "./clientSystem.js";
 
 export async function nextDay() {
   gameState.day += 1;
@@ -51,16 +76,19 @@ export async function nextDay() {
   // Add daily income
   gameState.player.cash += getDailyIncome(gameState.player);
 
-  // ✅ Apply lifestyle costs and effects (diet, gym, insurance, hobbies)
+  // Apply daily loan interest
+  applyDailyLoanInterest(gameState.player);
+
+  // Apply lifestyle costs and effects
   applyDailyPersonalEffects(gameState.player);
 
-  // ✅ Update clients
+  // Update clients
   updateClientsDaily(gameState.player);
 
-  // ✅ Update stock market
+  // Update stock market
   updateMarket(gameState.stocks);
 
-  // ✅ Update stock history
+  // Update stock history
   if (!gameState.stockHistory) gameState.stockHistory = [];
   const historyEntry = { day: gameState.day };
   gameState.stocks.forEach(stock => {
@@ -72,7 +100,5 @@ export async function nextDay() {
   await saveGame(gameState);
   updateUI(gameState);
 }
-
-
 
 startGame();
