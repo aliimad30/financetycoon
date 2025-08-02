@@ -3,6 +3,7 @@ import { initUI, updateUI } from "./ui.js";
 import { getStocks, updateMarket } from "./stockMarket.js";
 import { getDailyIncome } from "./jobSystem.js";
 import { saveGame, loadGame } from "./firestore.js";
+import { selectedStock as uiSelectedStock } from "./ui.js"; // ensure global sync
 
 let gameState = {
   day: 1,

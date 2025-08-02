@@ -9,6 +9,7 @@ import { renderStockChart } from "./chartSystem.js";
 
 
 export let selectedStock = window.selectedStock || null;
+
 let stateRef;
 
 
@@ -310,10 +311,12 @@ function updateChart(gameState) {
     renderStockChart([], "");
     return;
   }
+
   const filteredData = gameState.stockHistory.map(day => ({
     day: day.day,
     [selectedStock]: day[selectedStock]
   }));
+
   renderStockChart(filteredData, selectedStock);
 }
 
