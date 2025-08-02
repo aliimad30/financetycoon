@@ -87,7 +87,3 @@ canvas#stockChart {
   margin: 20px auto;
   display: block;
 }
-
-canvas#stockChart {
-  border: 2px dashed red;
-}
